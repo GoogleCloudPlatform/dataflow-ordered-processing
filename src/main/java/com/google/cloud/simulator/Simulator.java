@@ -1,6 +1,7 @@
 package com.google.cloud.simulator;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Callable;
@@ -10,16 +11,34 @@ import java.util.concurrent.Callable;
  */
 public class Simulator {
 
-  // Simple simulator -- return an iterable of OrderBookEvents
-  static public Iterable<OrderBookEvent> getSimpleSimulator(int midprice, long genOrders, long seed) {
+  /**
+   * Create a simple simulator for one contract
+   * 
+   * @param midprice   Starting midprice (long, e.g., 100)
+   * @param genOrders  How many orders to generate and cancel in the simulator (0 = unlimited)
+   * @param seed       Random seed (0 = default randomization).
+   *                   This allows for deterministic behaviour if needed.
+   * 
+   * @return Iterable<OrderBookEvent> -- produce OrderBookEvents from the simulator
+   */
+  static public Iterator<List<OrderBookEvent>> getSimpleSimulator(int midprice, long genOrders, long seed) {
     QueuedProducer<OrderBookEvent> que = new QueuedProducer<OrderBookEvent>();
     new Simulator(que, 1, 100, genOrders, seed);
     return que;
   }
 
-  // Complex simulator -- return an iterable of OrderBookEvents, across
-  // multiple contracts
-  static public Iterable<OrderBookEvent> getComplexSimulator(
+  /**
+   * Create a complex (multiple contract) simulator.
+   * 
+   * @param startContract  Starting contract ID
+   * @param endContract    End contract ID (exclusive)
+   * @param midPrice       Starting mid price for all contracts
+   * @param genOrders      How many orders to generate in total (0 = unlimited)
+   * @param seed           Random seed (0 = default randomization)
+   * 
+   * @return Iterable<OrderbookEvent> -- produce OrderBookEvents from the simulator
+   */
+  static public Iterator<List<OrderBookEvent>> getComplexSimulator(
       long startContract,
       long endContract,
       long midPrice,
@@ -29,13 +48,8 @@ public class Simulator {
     QueuedProducer<OrderBookEvent> que = new QueuedProducer<OrderBookEvent>();
 
     // Start all of the simulators
-    long ordersPerContract = genOrders / (endContract - startContract);
     for (long i = startContract; i < endContract; i++) {
-      if (ordersPerContract > genOrders) {
-        ordersPerContract = genOrders;
-      }
-      new Simulator(que, i, midPrice, ordersPerContract, seed);
-      genOrders -= ordersPerContract;
+      new Simulator(que, i, midPrice, genOrders, seed);
     }
 
     return que;
@@ -62,7 +76,7 @@ public class Simulator {
   private long anchorMidprice;
   private long midprice;
   private long genOrders;
-  Simulator(QueuedProducer<OrderBookEvent> que, long contractId, long midprice, long genOrders, long seed) {
+  private Simulator(QueuedProducer<OrderBookEvent> que, long contractId, long midprice, long genOrders, long seed) {
     this.anchorMidprice = midprice;
     this.midprice = midprice;
     this.genOrders = genOrders;

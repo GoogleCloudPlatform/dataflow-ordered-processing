@@ -1,6 +1,5 @@
 package com.google.cloud.simulator;
 
-import java.lang.System;
 import java.util.concurrent.atomic.AtomicLong;
 
 /*

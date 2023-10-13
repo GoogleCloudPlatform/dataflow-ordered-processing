@@ -42,7 +42,6 @@ message OrderBookEvent {
 
   // If it is an execution, record the matchNumber
   int64 matchNumber = 13;
-  string counterPartyId = 14;
 }
 
 message MarketDepth {

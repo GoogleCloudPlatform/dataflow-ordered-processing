@@ -1,6 +1,7 @@
 package com.google.cloud;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -9,14 +10,11 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import com.google.cloud.orderbook.OrderBookBuilder;
 import com.google.cloud.simulator.MarketDepth;
 import com.google.cloud.simulator.OrderBookEvent;
 import com.google.cloud.simulator.Simulator;
 
-/**
- * Hello world!
- *
- */
 public class App 
 {
   static private Options options = new Options();
@@ -30,7 +28,7 @@ public class App
         .build()
     );
     options.addOption(
-      Option.builder("n")
+      Option.builder("l")
         .hasArg(true)
         .longOpt("limit")
         .optionalArg(false)
@@ -39,10 +37,20 @@ public class App
         .build()
     );
     options.addOption(
-      Option.builder("seed")
+      Option.builder("s")
         .hasArg(true)
+        .longOpt("seed")
         .optionalArg(false)
         .desc("Seed for random number generator (if deterministic)")
+        .type(Number.class)
+        .build()
+    );
+    options.addOption(
+      Option.builder("c")
+        .hasArg(true)
+        .longOpt("contracts")
+        .optionalArg(false)
+        .desc("Number of contracts to create (default is 1)")
         .type(Number.class)
         .build()
     );
@@ -66,7 +74,9 @@ public class App
 
       Long limit = (Long)line.getParsedOptionValue("limit");
       Long seed = (Long)line.getParsedOptionValue("seed");
-      runMain(
+      Long maxContracts = (Long)line.getParsedOptionValue("contracts");
+      runSimulator(
+        (maxContracts == null) ? 1 : maxContracts,
         (limit == null) ? 0 : limit,
         (seed == null) ? 0 : seed);
     }
@@ -74,12 +84,57 @@ public class App
       System.err.println("Parsing failed.  Reason: " + exp.getMessage());
       showHelp();
     }
-    System.out.println( "Hello World!" );
   }
 
+  /**
+   * @param limit Number of orders to generate (0 = unlimited)
+   * @param seed  Random seed for running simulator (0 = standard method)
+   */
+  public static void runSimulator(long maxContracts, long limit, long seed) {
+    OrderBookBuilder obb = new OrderBookBuilder();
+    Iterator<List<OrderBookEvent>> it = Simulator.getComplexSimulator(
+      0,
+      maxContracts,
+      100,
+      limit,
+      seed
+    );
+    while (it.hasNext()) {
+      for (OrderBookEvent obe : it.next()) {
+        System.out.println("Event: " + OrderBookEventToString(obe));
+
+        // Modify the orderbook
+        obb.mutate(obe);
+
+        // Produce the latest MarketDepth
+        MarketDepth md = obb.produceResult(2, true);
+
+        // If there's anything new in the MarketDepth, then print to stdout
+        if (md != null) {
+          System.out.println(MarketDepthToString(md));
+        }
+      }
+    }
+  }
+
+  // Stringify MarketDepth in a compact way
+  private static String MarketDepthToString(MarketDepth md) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("Id:" + md.getContractId() + " Seq:" + md.getContractSeqId() + " ");
+    sb.append("Bids: " + PriceQuantityListToString(md.getBidsList()) + " ");
+    sb.append("Asks: " + PriceQuantityListToString(md.getOffersList()));
+    if (md.getLastTrade().getQuantity() != 0) {
+      sb.append(" LastTrade: " + PriceQuantityToString(md.getLastTrade()));
+    }
+    return sb.toString();
+  }
+
+  // Stringify PriceQuantity in a compact way
   private static String PriceQuantityToString(MarketDepth.PriceQuantity pq) {
     return pq.getQuantity() + "@" + pq.getPrice();
   }
+
+  // Stringify PriceQuantity List in a compact way
   private static String PriceQuantityListToString(List<MarketDepth.PriceQuantity> pqs) {
     ArrayList<String> prices = new ArrayList<String>();
     for (MarketDepth.PriceQuantity pq : pqs) {
@@ -88,6 +143,7 @@ public class App
     return "[" + String.join(" ", prices) + "]";
   }
 
+  // Stringify OrderBookEvent in a compact way
   private static String OrderBookEventToString(OrderBookEvent obe) {
     switch (obe.getType()) {
       case NEW: {
@@ -120,31 +176,4 @@ public class App
     }
   }
 
-  /*
-   * We can:
-   *   - Publish Simulated OrderBookEvents into PubSub or standard out
-   *      - Optionally also subscribe to MarkeDepth events
-   *   - Publish Market Depth events into PubSub or standard out
-   * 
-   * - If we subscribe to MarketDepth events, we must be publishing into PubSub OrderBook events.
-   * - The only reason to subscribe to MarketDepth events is for latency testing.
-   */
-
-  public static void runMain(long limit, long seed) {
-    OrderBookBuilder obb = new OrderBookBuilder();
-    Iterable<OrderBookEvent> it = Simulator.getSimpleSimulator(100, limit, seed);
-    for (OrderBookEvent obe : it) {
-      System.out.println("Event: " + OrderBookEventToString(obe));
-      MarketDepth md = obb.updateDepth(obe, 2);
-      if (md != null) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Bids: " + PriceQuantityListToString(md.getBidsList()));
-        sb.append(" Asks: " + PriceQuantityListToString(md.getOffersList()));
-        if (md.getLastTrade().getQuantity() != 0) {
-          sb.append(" LastTrade: " + PriceQuantityToString(md.getLastTrade()));
-        }
-        System.out.println(sb.toString());
-      }
-    }
-  }
 }

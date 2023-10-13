@@ -12,11 +12,16 @@ import java.util.concurrent.atomic.AtomicLong;
 /*
  * Matcher for a single contract that can produce OrderBookEvents
  * 
- * Not intended to be used directly.
+ * There must be only one Matcher class per contractId, but there can
+ * be in parallel multiple matchers for different contractIds.
  */
 class Matcher {
+
+  // Global Sequence ID -- atomic long to guarantee consistency
   static private AtomicLong nextSeqId = new AtomicLong(0);
 
+  // Ordering orders in a tree -- ordered by price and orderId
+  // (orderId is always increasing)
   private class OrderKey {
     OrderKey(long price, long orderId) {
       this.price = price;
@@ -31,10 +36,11 @@ class Matcher {
     }
   }
 
+  final private long contractId;
   private long matchId = 0;
   private long seqId = 0;
-  private long contractId;
 
+  // Create a matcher for a contractId
   Matcher(long contractId) {
     this.contractId = contractId;
   }
@@ -100,7 +106,7 @@ class Matcher {
     // Find match events
     ArrayList<OrderBookEvent> events = match(o);
 
-    // Stop now if filled or IOC
+    // Stop now if filled (IOC orders not used)
     if (o.getQuantityRemaining() == 0) {
       return events;
     }
@@ -156,8 +162,6 @@ class Matcher {
       matches.add(buildEvent(OrderBookEvent.Type.EXECUTED, entry.getValue())
         .setQuantityFilled(fillQty)
         .setMatchNumber(matchId)
-        // TODO: Set counterpartyid from o.getPartyId()
-        // .setCounterPartyId()
         .build());
       
       matchId ++;
@@ -184,8 +188,7 @@ class Matcher {
       .setQuantity(order.getQuantity())
       .setQuantityRemaining(order.getQuantityRemaining())
       .setQuantityFilled(0)
-      .setMatchNumber(0)
-      .setCounterPartyId("");
+      .setMatchNumber(0);
     
     return builder;
   }
