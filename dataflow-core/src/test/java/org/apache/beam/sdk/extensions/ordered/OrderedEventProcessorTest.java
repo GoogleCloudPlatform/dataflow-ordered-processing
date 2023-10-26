@@ -57,7 +57,7 @@ import org.junit.runners.JUnit4;
 public class OrderedEventProcessorTest {
 
   @Rule
-  public TestPipeline p = TestPipeline.create();
+  public final transient TestPipeline p = TestPipeline.create();
 
   @DefaultCoder(StringBufferStateCoder.class)
   public static class StringBufferState implements MutableState<String, String> {
