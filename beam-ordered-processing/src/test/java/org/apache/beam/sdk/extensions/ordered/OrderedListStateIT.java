@@ -41,7 +41,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+// TODO: test if it's fixed and remove this class. It's only been used to illustrate a bug.
 public class OrderedListStateIT {
 
   private static final String DATAFLOW_TEMP_BUCKET = "DATAFLOW_TEMP_BUCKET";

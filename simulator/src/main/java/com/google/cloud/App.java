@@ -1,8 +1,9 @@
 package com.google.cloud;
 
+import com.google.cloud.orderbook.OrderBookBuilder;
 import com.google.cloud.orderbook.model.MarketDepth;
 import com.google.cloud.orderbook.model.OrderBookEvent;
-import java.util.ArrayList;
+import com.google.cloud.simulator.Simulator;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.commons.cli.CommandLine;
@@ -12,49 +13,36 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import com.google.cloud.orderbook.OrderBookBuilder;
 
-import com.google.cloud.simulator.Simulator;
+public class App {
 
-public class App 
-{
   static private Options options = new Options();
+
+  public static final String LIMIT = "limit";
+
+  public static final String SEED = "seed";
+
+  public static final String CONTRACTS = "contracts";
+
+  public static final String HELP = "help";
+
+  public static final String ORDER_TOPIC = "ordertopic";
+  public static final String MARKET_DEPTH_TOPIC = "marketdepthtopic";
+
   static {
-    options.addOption(
-      Option.builder("h")
-        .longOpt("help")
-        .optionalArg(false)
-        .desc("Limit of events to produce")
-        .type(Number.class)
-        .build()
-    );
-    options.addOption(
-      Option.builder("l")
-        .hasArg(true)
-        .longOpt("limit")
-        .optionalArg(false)
-        .desc("Limit of events to produce")
-        .type(Number.class)
-        .build()
-    );
-    options.addOption(
-      Option.builder("s")
-        .hasArg(true)
-        .longOpt("seed")
-        .optionalArg(false)
-        .desc("Seed for random number generator (if deterministic)")
-        .type(Number.class)
-        .build()
-    );
-    options.addOption(
-      Option.builder("c")
-        .hasArg(true)
-        .longOpt("contracts")
-        .optionalArg(false)
-        .desc("Number of contracts to create (default is 1)")
-        .type(Number.class)
-        .build()
-    );
+    // TODO: refactor to use option groups
+    options.addOption(Option.builder("h").longOpt(HELP).optionalArg(false)
+        .desc("Display the usage documentation.").type(String.class).build());
+    options.addOption(Option.builder("l").hasArg(true).longOpt(LIMIT).optionalArg(false)
+        .desc("Limit of events to produce").type(Number.class).build());
+    options.addOption(Option.builder("s").hasArg(true).longOpt(SEED).optionalArg(false)
+        .desc("Seed for random number generator (if deterministic)").type(Number.class).build());
+    options.addOption(Option.builder("c").hasArg(true).longOpt(CONTRACTS).optionalArg(false)
+        .desc("Number of contracts to create (default is 1)").type(Number.class).build());
+    options.addOption(Option.builder("o").hasArg(true).longOpt(ORDER_TOPIC).optionalArg(true)
+        .desc("Pub/Sub topic to publish orders").type(String.class).build());
+    options.addOption(Option.builder("m").hasArg(true).longOpt(MARKET_DEPTH_TOPIC).optionalArg(true)
+        .desc("Pub/Sub topic to publish orders").type(String.class).build());
   }
 
   private static void showHelp() {
@@ -62,28 +50,46 @@ public class App
     formatter.printHelp(App.class.getSimpleName(), options);
   }
 
-  public static void main( String[] args )
-  {
+  public static void main(String[] args) {
+
+    String orderTopic = null;
+    String marketDepthTopic = null;
+    Long limit = null;
+    Long seed = null;
+    Long maxContracts = null;
     try {
       CommandLineParser parser = new DefaultParser();
       CommandLine line = parser.parse(options, args);
 
-      if (line.hasOption("help")) {
+      limit = (Long) line.getParsedOptionValue(LIMIT);
+
+      seed = (Long) line.getParsedOptionValue(SEED);
+
+      maxContracts = (Long) line.getParsedOptionValue(CONTRACTS);
+      orderTopic = line.getOptionValue(ORDER_TOPIC);
+      marketDepthTopic = line.getOptionValue(MARKET_DEPTH_TOPIC);
+
+      if (line.hasOption(HELP)) {
         showHelp();
         System.exit(0);
       }
-
-      Long limit = (Long)line.getParsedOptionValue("limit");
-      Long seed = (Long)line.getParsedOptionValue("seed");
-      Long maxContracts = (Long)line.getParsedOptionValue("contracts");
-      runSimulator(
-        (maxContracts == null) ? 1 : maxContracts,
-        (limit == null) ? 0 : limit,
-        (seed == null) ? 0 : seed);
-    }
-    catch (ParseException exp) {
-      System.err.println("Parsing failed.  Reason: " + exp.getMessage());
+    } catch (ParseException e) {
+      System.err.println("Parsing failed.  Reason: " + e.getMessage());
       showHelp();
+      System.exit(-1);
+    }
+
+    try (EventConsumer eventConsumer = orderTopic == null ? new StandardOutputConsumer()
+        : new PubSubConsumer(orderTopic, marketDepthTopic)) {
+
+//      System.out.println(
+//          "Starting simulator with max contracts=" + maxContracts + ", limit=" + limit + ", seed="
+//              + seed);
+
+      runSimulator((maxContracts == null) ? 1 : maxContracts, (limit == null) ? 0 : limit,
+          (seed == null) ? 0 : seed, eventConsumer);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 
@@ -91,90 +97,27 @@ public class App
    * @param limit Number of orders to generate (0 = unlimited)
    * @param seed  Random seed for running simulator (0 = standard method)
    */
-  public static void runSimulator(long maxContracts, long limit, long seed) {
+  public static void runSimulator(long maxContracts, long limit, long seed,
+      EventConsumer eventConsumer) {
+
     OrderBookBuilder obb = new OrderBookBuilder();
-    Iterator<List<OrderBookEvent>> it = Simulator.getComplexSimulator(
-      0,
-      maxContracts,
-      100,
-      limit,
-      seed
-    );
+    Iterator<List<OrderBookEvent>> it = Simulator.getComplexSimulator(0, maxContracts, 100, limit,
+        seed);
     while (it.hasNext()) {
-      for (OrderBookEvent obe : it.next()) {
-        System.out.println("Event: " + OrderBookEventToString(obe));
+      for (OrderBookEvent orderBookEvent : it.next()) {
+        eventConsumer.accept(orderBookEvent);
 
         // Modify the orderbook
-        obb.mutate(obe);
+        obb.mutate(orderBookEvent);
 
         // Produce the latest MarketDepth
-        MarketDepth md = obb.produceResult(2, true);
+        MarketDepth marketDepth = obb.produceResult(2, true);
 
         // If there's anything new in the MarketDepth, then print to stdout
-        if (md != null) {
-          System.out.println(MarketDepthToString(md));
+        if (marketDepth != null) {
+          eventConsumer.accept(marketDepth);
         }
       }
     }
   }
-
-  // Stringify MarketDepth in a compact way
-  private static String MarketDepthToString(MarketDepth md) {
-    StringBuilder sb = new StringBuilder();
-    sb.append("Id:" + md.getContractId() + " Seq:" + md.getContractSeqId() + " ");
-    sb.append("Bids: " + PriceQuantityListToString(md.getBidsList()) + " ");
-    sb.append("Asks: " + PriceQuantityListToString(md.getOffersList()));
-    if (md.getLastTrade().getQuantity() != 0) {
-      sb.append(" LastTrade: " + PriceQuantityToString(md.getLastTrade()));
-    }
-    return sb.toString();
-  }
-
-  // Stringify PriceQuantity in a compact way
-  private static String PriceQuantityToString(MarketDepth.PriceQuantity pq) {
-    return pq.getQuantity() + "@" + pq.getPrice();
-  }
-
-  // Stringify PriceQuantity List in a compact way
-  private static String PriceQuantityListToString(List<MarketDepth.PriceQuantity> pqs) {
-    ArrayList<String> prices = new ArrayList<String>();
-    for (MarketDepth.PriceQuantity pq : pqs) {
-      prices.add(PriceQuantityToString(pq));
-    }
-    return "[" + String.join(" ", prices) + "]";
-  }
-
-  // Stringify OrderBookEvent in a compact way
-  private static String OrderBookEventToString(OrderBookEvent obe) {
-    switch (obe.getType()) {
-      case NEW: {
-        return String.format("NEW [%d] %s %d @ %d",
-          obe.getOrderId(),
-          obe.getSide(),
-          obe.getQuantityRemaining(),
-          obe.getPrice()
-        );
-      }
-      case EXECUTED: {
-        return String.format("EXE [%d] %s %d @ %d",
-          obe.getOrderId(),
-          obe.getSide(),
-          obe.getQuantityFilled(),
-          obe.getPrice()
-        );
-      }
-      case DELETED: {
-        return String.format("CAN [%d] %s %d @ %d",
-          obe.getOrderId(),
-          obe.getSide(),
-          obe.getQuantityRemaining(),
-          obe.getPrice()
-        );
-      }
-      default: {
-        return "BROKEN";
-      }
-    }
-  }
-
 }

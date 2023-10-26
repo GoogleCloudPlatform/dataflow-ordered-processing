@@ -14,7 +14,7 @@
   <url>http://www.google.com/</url>
   <modules>
     <module>simulator</module>
-    <module>dataflow-core</module>
+    <module>beam-ordered-processing</module>
     <module>order-book-pipeline</module>
     <module>business-model</module>
   </modules>

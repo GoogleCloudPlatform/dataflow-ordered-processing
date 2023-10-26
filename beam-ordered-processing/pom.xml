@@ -9,7 +9,7 @@
     <version>1.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>dataflow-core</artifactId>
+  <artifactId>beam-ordered-processing</artifactId>
   <packaging>jar</packaging>
 
   <properties>
