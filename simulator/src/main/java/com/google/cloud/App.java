@@ -30,7 +30,7 @@ public class App {
   public static final String MARKET_DEPTH_TOPIC = "marketdepthtopic";
 
   static {
-    // TODO: refactor to use option groups
+    // TODO: refactor to use option groups to make sure the two topics are always provided
     options.addOption(Option.builder("h").longOpt(HELP).optionalArg(false)
         .desc("Display the usage documentation.").type(String.class).build());
     options.addOption(Option.builder("l").hasArg(true).longOpt(LIMIT).optionalArg(false)

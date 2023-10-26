@@ -25,13 +25,18 @@ cd ..
 mvn clean install
 ```
 
-## Running Tests
+## Running the demo
 ### Start the test harness
-This will start a pipeline which will be generating synthetic events:
+This will start a simulator which will be generating synthetic orders and expected order book events:
 
 ```shell
-./start-event-generation.sh <rate>
+./start-simulator.sh
 ```
+
+--- 
+# Don't read below this line - needs to be updated for the current demo
+
+[//]: # (TODO: update)
 
 A typical rate is tens of thousands of events per second. A Dataflow pipeline named `data-generator-<rate>`
 will be started. You can simulate event load increases by starting additional pipelines. Note, that you can't start
