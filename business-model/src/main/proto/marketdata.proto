@@ -1,0 +1,71 @@
+
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.google.cloud.orderbook.model";
+option java_outer_classname = "MarketData";
+
+message OrderBookEvent {
+  int64 timestampMS = 1;  // Millisecond timestamp
+  int64 contractId = 2;   // Contract ID (unique ordering)
+  int64 messageId = 3;    // Message ID
+
+  // Global and per-contract sequence ID.
+  int64 seqId = 4;
+  int64 contractSeqId = 5;
+
+  // Event type
+  // NOTE: Aggressive matching orders will
+  // never issue a NEW or DELETED event, unless
+  // there is a quantity that becomes passive.
+  enum Type {
+    UNSPECIFIED_ORDER = 0;
+    NEW = 1;
+    EXECUTED = 2;
+    DELETED = 3;
+  }
+  Type type = 6;
+
+  // OrderID for the passive order.
+  int64 orderId = 7;
+
+  // Side for the passive order.
+  enum Side {
+    UNSPECIFIED_SIDE = 0;
+    BUY = 1;
+    SELL = 2;
+  }
+  Side side = 8; // enum Buy/Sell
+
+  int64 price = 9;
+  int64 quantity = 10;
+  int64 quantityRemaining = 11;
+  int64 quantityFilled = 12;
+
+  // If it is an execution, record the matchNumber
+  int64 matchNumber = 13;
+}
+
+message MarketDepth {
+  int64 timestampMS = 1;   // Millisecond timestmp
+  int64 contractId = 2;    // Contract ID (unique ordering)
+  int64 messageId = 3;     // Message ID (corresponds to OrderBookEvent messageId)
+
+  // Sequence IDs (global and per contract) will skip
+  // any updates that do not generate a market depth.
+  int64 seqId = 4;
+  int64 contractSeqId = 5;
+
+  // Current market depth (ordered by most significant to
+  // least significant bid & offer)
+  message PriceQuantity {
+    int64 price = 1;
+    int64 quantity = 2;
+  }
+  repeated PriceQuantity bids = 6;
+  repeated PriceQuantity offers = 7;
+
+  // If a trade was executed for this event,
+  // capture this here.
+  PriceQuantity lastTrade = 8;
+}
