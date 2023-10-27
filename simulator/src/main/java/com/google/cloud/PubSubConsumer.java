@@ -3,6 +3,7 @@ package com.google.cloud;
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutureCallback;
 import com.google.api.core.ApiFutures;
+import com.google.api.gax.batching.BatchingSettings;
 import com.google.api.gax.rpc.ApiException;
 import com.google.cloud.StatsTracker.Stats;
 import com.google.cloud.orderbook.model.MarketDepth;
@@ -12,19 +13,36 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.google.pubsub.v1.PubsubMessage;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
+import java.util.TimerTask;
 import java.util.function.Consumer;
+import org.threeten.bp.Duration;
 
 public class PubSubConsumer implements EventConsumer {
 
   private final Publisher orderPublisher;
   private final Publisher marketDepthPublisher;
 
+  private final int STATS_FREQUENCY = 5;
   private final Stats orderStats = new Stats("orders");
   private final Stats marketDepthStats = new Stats("market-depths");
+  private final TimerTask statsLogger = StatsTracker.logStats(STATS_FREQUENCY, orderStats, marketDepthStats);
 
   public PubSubConsumer(String orderTopic, String marketDepthTopic) throws IOException {
-    orderPublisher = Publisher.newBuilder(TopicName.parse(orderTopic)).build();
-    marketDepthPublisher = Publisher.newBuilder(TopicName.parse(marketDepthTopic)).build();
+
+    BatchingSettings settings = BatchingSettings.newBuilder()
+      .setElementCountThreshold(10*1000L) // default: 100
+      .setRequestByteThreshold(10*1024L)  // default: 1000 bytes
+      .setDelayThreshold(Duration.ofMillis(50))     // default: 1ms
+      .build();
+
+    // NOTE - this is where .setEndpoint() can be called for regional endpoints and
+    //        .setEnableMessageOrdering()
+    orderPublisher = Publisher.newBuilder(TopicName.parse(orderTopic))
+      .setBatchingSettings(settings)
+      .build();
+    marketDepthPublisher = Publisher.newBuilder(TopicName.parse(marketDepthTopic))
+      .setBatchingSettings(settings)
+      .build();
   }
 
   static public Consumer<MarketDepth> publishMarketDepth(Consumer<PubsubMessage> consumer) {
@@ -59,7 +77,7 @@ public class PubSubConsumer implements EventConsumer {
       // Track stats on confirmed publish
       @Override
       public void onSuccess(String messageId) {
-//        stats.add(System.nanoTime() - pubTime, 1, messageSize);
+        stats.add(System.nanoTime() - pubTime, 1, messageSize);
       }
     }, MoreExecutors.directExecutor());
   }
@@ -84,8 +102,6 @@ public class PubSubConsumer implements EventConsumer {
   public void close() {
     orderPublisher.shutdown();
     marketDepthPublisher.shutdown();
-
-    StatsTracker statsTracker = new StatsTracker(orderStats, marketDepthStats);
-    statsTracker.run();
+    statsLogger.cancel();
   }
 }

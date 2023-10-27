@@ -22,10 +22,10 @@ public class Simulator {
    * 
    * @return Iterable<OrderBookEvent> -- produce OrderBookEvents from the simulator
    */
-  static public Iterator<List<OrderBookEvent>> getSimpleSimulator(int midprice, long genOrders, long seed) {
-    QueuedProducer<OrderBookEvent> que = new QueuedProducer<>();
-    new Simulator(que, 1, 100, genOrders, seed);
-    return que;
+  static public Iterator<List<OrderBookEvent>> getSimpleSimulator(MatcherContext context, int midprice, long genOrders, long seed) {
+    //QueuedProducer<OrderBookEvent> que = new QueuedProducer<>();
+    new Simulator(context, 1, 100, genOrders, seed);
+    return context.iterator();
   }
 
   /**
@@ -40,22 +40,22 @@ public class Simulator {
    * @return Iterable<OrderbookEvent> -- produce OrderBookEvents from the simulator
    */
   static public Iterator<List<OrderBookEvent>> getComplexSimulator(
+      MatcherContext context,
       long startContract,
       long endContract,
       long midPrice,
       long genOrders,
       long seed) {
 
-    QueuedProducer<OrderBookEvent> que = new QueuedProducer<OrderBookEvent>();
-
     // Start all of the simulators
     for (long i = startContract; i < endContract; i++) {
-      new Simulator(que, i, midPrice, genOrders, seed);
+      new Simulator(context, i, midPrice, genOrders, seed);
     }
 
-    return que;
+    return context.iterator();
   }
 
+  private final MatcherContext context;
   private final Matcher m;
   private final Random r;
 
@@ -72,16 +72,14 @@ public class Simulator {
   private double trailingSV = 0.0;
   private long trailingTimeoutTicks = 50;
 
-  final private QueuedProducer<OrderBookEvent> que;
-
   private long anchorMidprice;
   private long midprice;
   private long genOrders;
-  private Simulator(QueuedProducer<OrderBookEvent> que, long contractId, long midprice, long genOrders, long seed) {
+  private Simulator(MatcherContext context, long contractId, long midprice, long genOrders, long seed) {
     this.anchorMidprice = midprice;
     this.midprice = midprice;
     this.genOrders = genOrders;
-    this.m = new Matcher(contractId);
+    this.m = new Matcher(context, contractId);
     if (seed != 0) {
       this.r = new Random(seed);
     } else {
@@ -89,8 +87,8 @@ public class Simulator {
     }
 
     // Queue the first task
-    this.que = que;
-    this.que.add(0, new Callable<List<OrderBookEvent>>() {
+    this.context = context;
+    this.context.add(0, new Callable<List<OrderBookEvent>>() {
       @Override
       public List<OrderBookEvent> call() throws Exception {
         return generateOrder();
@@ -104,7 +102,7 @@ public class Simulator {
     
     if (quantity > 0) {
       midprice = price;
-      que.add(trailingTimeoutTicks, new Callable<List<OrderBookEvent>>() {
+      context.add(trailingTimeoutTicks, new Callable<List<OrderBookEvent>>() {
         @Override
         public List<OrderBookEvent> call() throws Exception {
           addExecution(price, -1 * quantity);
@@ -157,7 +155,7 @@ public class Simulator {
     // Decrement the generated orders
     this.genOrders -= 1;
     if (this.genOrders != 0) {
-      que.add(1, new Callable<List<OrderBookEvent>>() {
+      context.add(1, new Callable<List<OrderBookEvent>>() {
         @Override
         public List<OrderBookEvent> call() throws Exception {
           return generateOrder();
@@ -166,7 +164,7 @@ public class Simulator {
     }
 
     // Remove the order in the future
-    que.add(50, new Callable<List<OrderBookEvent>>() {
+    context.add(50, new Callable<List<OrderBookEvent>>() {
       @Override
       public List<OrderBookEvent> call() throws Exception {
         return m.remove(o);

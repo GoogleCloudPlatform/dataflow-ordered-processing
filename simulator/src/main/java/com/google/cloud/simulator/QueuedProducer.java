@@ -62,7 +62,13 @@ class QueuedProducer<T> implements Iterator<List<T>> {
     que.add(new QueuedItem<T>(delay, work));
   }
 
-  private List<T> getNext() {
+  @Override
+  public boolean hasNext() {
+    return !que.isEmpty();
+  }
+
+  @Override
+  public List<T> next() {
 
     // Get next item to execute -- if nothing is there,
     // we need to stop and return null.
@@ -83,62 +89,4 @@ class QueuedProducer<T> implements Iterator<List<T>> {
       return Arrays.asList();
     }
   }
-
-  //@Override
-  //public Iterator<List<T>> iterator() {
-  //  return new Iterator<List<T>>() {
-      @Override
-      public boolean hasNext() {
-        return !que.isEmpty();
-      }
-
-      @Override
-      public List<T> next() {
-        return getNext();
-      }
-  //  };
-  //}
-
-  /*
-  @Override
-  public Iterator<T> iterator() {
-    return new Iterator<T>() {
-      private List<T> items = null;
-      private int itemIdx = 0;
-  
-      @Override
-      public boolean hasNext() {
-
-        // If we're on a list of result items, return true
-        // if there's more in the list
-        if (items != null && itemIdx < items.size()) {
-          return true;
-        }
-
-        // If there's more in the queue, return true
-        // (more work coming)
-        return !que.isEmpty();
-      }
-  
-      @Override
-      public T next() {
-        if (items == null) {
-          items = getNext();
-        }
-
-        if (items == null) {
-          return null;
-        }
-
-        while (items == null || itemIdx == items.size()) {
-          items = getNext();
-        }
-        T next = items.get(itemIdx);
-        itemIdx ++;
-        return next;
-        }
-      }
-    };
-  }
-  */
 }

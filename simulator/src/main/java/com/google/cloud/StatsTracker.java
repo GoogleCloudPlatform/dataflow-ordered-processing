@@ -5,9 +5,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Timer;
 import java.util.TimerTask;
 
-public class StatsTracker extends TimerTask {
+public class StatsTracker {
 
   final private static long GBYTE  = 1024 * 1024 * 1024;
   final private static long MBYTE  = 1024 * 1024;
@@ -124,9 +125,13 @@ public class StatsTracker extends TimerTask {
       this.name = name;
     }
 
+    public String getName() {
+      return name;
+    }
+
     synchronized void add(long nanoDuration, long ops, long bytes) {
-      ops += ops;
-      bytes += bytes;
+      this.ops += ops;
+      this.bytes += bytes;
       timings.add(ops, nanoDuration);
     }
 
@@ -179,23 +184,45 @@ public class StatsTracker extends TimerTask {
     }
   }
 
-  private final List<Stats> stats;
-  public StatsTracker(Stats... stats) {
-    this.stats = Arrays.asList(stats);
+  static public TimerTask logStats(int freq, Stats... stats) {
 
-    ArrayList<String> headers = new ArrayList<String>();
-    for (Stats stat : stats) {
-      headers.add(stat.statsHeader());
-    }
-    System.out.println(String.join(" ", headers));
-  }
+    // Logger for the stats
+    // TODO: Log to a logger, rather than stdout
+    TimerTask logger = new TimerTask() {
+      boolean hasRunBefore = false;
+      @Override
+      public void run() {
 
-  @Override
-  public void run() {
-    ArrayList<String> ostats = new ArrayList<String>();
+        // Print the header if necessary
+        if (!hasRunBefore) {
+          ArrayList<String> hdrs = new ArrayList<String>();
+          for (Stats stat : stats) {
+            hdrs.add(stat.statsHeader());
+          }
+          System.out.println(String.join(" ", hdrs));
+          hasRunBefore = true;
+        }
+
+        // Print main stats
+        ArrayList<String> ostats = new ArrayList<String>();
+        for (Stats stat : stats) {
+          ostats.add(stat.stats(true));
+        }
+        System.out.println(String.join(" ", ostats));
+      }
+    };
+
+    // Get name of timer
+    ArrayList<String> names = new ArrayList<String>();
     for (Stats stat : stats) {
-      ostats.add(stat.stats(true));
+      names.add(stat.getName());
     }
-    System.out.println(String.join(" ", ostats));
+    String name = "logger:" + String.join(":", names);
+
+    // Create timer and scheduler work
+    Timer timer = new Timer(name, true);
+    timer.scheduleAtFixedRate(logger, freq * 1000, freq * 1000);
+
+    return logger;
   }
 }

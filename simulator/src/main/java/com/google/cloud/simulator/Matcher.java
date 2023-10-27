@@ -11,7 +11,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 /*
  * Matcher for a single contract that can produce OrderBookEvents
@@ -20,9 +19,6 @@ import java.util.concurrent.atomic.AtomicLong;
  * be in parallel multiple matchers for different contractIds.
  */
 class Matcher {
-
-  // Global Sequence ID -- atomic long to guarantee consistency
-  static private AtomicLong nextSeqId = new AtomicLong(0);
 
   // Ordering orders in a tree -- ordered by price and orderId
   // (orderId is always increasing)
@@ -41,12 +37,14 @@ class Matcher {
     }
   }
 
+  final private MatcherContext context;
   final private long contractId;
   private long matchId = 0;
   private long seqId = 0;
 
   // Create a matcher for a contractId
-  Matcher(long contractId) {
+  Matcher(MatcherContext context, long contractId) {
+    this.context = context;
     this.contractId = contractId;
   }
 
@@ -181,21 +179,11 @@ class Matcher {
   }
 
   private Builder buildEvent(Type type, Order order) {
-    Builder builder = newBuilder()
-        .setTimestampMS(System.currentTimeMillis())
-        .setSeqId(nextSeqId.getAndIncrement())
-        .setContractSeqId(seqId++)
-        .setContractId(contractId)
-        .setType(type)
-        .setOrderId(order.getOrderId())
-        .setPrice(order.getPrice())
-        .setSide(order.getSide())
-        .setQuantity(order.getQuantity())
-        .setQuantityRemaining(order.getQuantityRemaining())
-        .setQuantityFilled(0)
-        .setMatchNumber(0);
-
-    return builder;
+    return context.buildOrderBookEvent(
+      type,
+      seqId++,
+      contractId,
+      order);
   }
 
   @Override
