@@ -1,4 +1,4 @@
-package com.google.cloud.simulator;
+package com.google.cloud.orderbook;
 
 import static com.google.cloud.orderbook.model.OrderBookEvent.*;
 
@@ -18,7 +18,7 @@ import java.util.TreeMap;
  * There must be only one Matcher class per contractId, but there can
  * be in parallel multiple matchers for different contractIds.
  */
-class Matcher {
+public class Matcher {
 
   // Ordering orders in a tree -- ordered by price and orderId
   // (orderId is always increasing)
@@ -43,7 +43,7 @@ class Matcher {
   private long seqId = 0;
 
   // Create a matcher for a contractId
-  Matcher(MatcherContext context, long contractId) {
+  public Matcher(MatcherContext context, long contractId) {
     this.context = context;
     this.contractId = contractId;
   }
@@ -89,7 +89,7 @@ class Matcher {
       }
   );
 
-  List<OrderBookEvent> remove(Order o) {
+  public List<OrderBookEvent> remove(Order o) {
     Order old = null;
     if (o.getSide() == Side.BUY) {
       old = bidOrderList.remove(new OrderKey(o.getPrice(), o.getOrderId()));
@@ -104,7 +104,7 @@ class Matcher {
     }
   }
 
-  List<OrderBookEvent> add(Order o) {
+  public List<OrderBookEvent> add(Order o) {
 
     // Find match events
     ArrayList<OrderBookEvent> events = match(o);

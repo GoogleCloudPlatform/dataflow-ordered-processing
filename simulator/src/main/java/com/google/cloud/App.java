@@ -3,7 +3,7 @@ package com.google.cloud;
 import com.google.cloud.orderbook.OrderBookBuilder;
 import com.google.cloud.orderbook.model.MarketDepth;
 import com.google.cloud.orderbook.model.OrderBookEvent;
-import com.google.cloud.simulator.MatcherContext;
+import com.google.cloud.orderbook.MatcherContext;
 import com.google.cloud.simulator.Simulator;
 import java.util.Iterator;
 import java.util.List;

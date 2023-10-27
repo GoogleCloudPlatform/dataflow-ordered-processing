@@ -1,5 +1,6 @@
-package com.google.cloud.simulator;
+package com.google.cloud.orderbook;
 
+import com.google.cloud.orderbook.Order;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -78,7 +79,7 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
     this.nextBucketTime = startTimeMillis;
   }
 
-  void add(long delay, Callable<List<OrderBookEvent>> work) {
+  public void add(long delay, Callable<List<OrderBookEvent>> work) {
     this.que.add(delay, work);
   }
 

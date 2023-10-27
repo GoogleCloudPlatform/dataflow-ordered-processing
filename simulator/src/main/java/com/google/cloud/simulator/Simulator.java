@@ -1,5 +1,9 @@
 package com.google.cloud.simulator;
 
+import com.google.cloud.orderbook.Matcher;
+import com.google.cloud.orderbook.MatcherContext;
+import com.google.cloud.orderbook.Order;
+import com.google.cloud.orderbook.OrderFactory;
 import com.google.cloud.orderbook.model.OrderBookEvent;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -75,6 +79,9 @@ public class Simulator {
   private long anchorMidprice;
   private long midprice;
   private long genOrders;
+
+  private OrderFactory orderFactory = new OrderFactory();
+
   private Simulator(MatcherContext context, long contractId, long midprice, long genOrders, long seed) {
     this.anchorMidprice = midprice;
     this.midprice = midprice;
@@ -88,12 +95,7 @@ public class Simulator {
 
     // Queue the first task
     this.context = context;
-    this.context.add(0, new Callable<List<OrderBookEvent>>() {
-      @Override
-      public List<OrderBookEvent> call() throws Exception {
-        return generateOrder();
-      }
-    });
+    this.context.add(0, () -> generateOrder());
   }
 
   private void addExecution(long price, long quantity) {
@@ -102,12 +104,9 @@ public class Simulator {
     
     if (quantity > 0) {
       midprice = price;
-      context.add(trailingTimeoutTicks, new Callable<List<OrderBookEvent>>() {
-        @Override
-        public List<OrderBookEvent> call() throws Exception {
-          addExecution(price, -1 * quantity);
-          return Arrays.asList();
-        }
+      context.add(trailingTimeoutTicks, () -> {
+        addExecution(price, -1 * quantity);
+        return Arrays.asList();
       });
     }
 
@@ -131,7 +130,7 @@ public class Simulator {
     if (trailingShares > 0)
       midprice = Math.round(trailingSV / trailingShares);
 
-    // Adjust buy sell bias by how close we are to the outter edges of trading (+/- 50)
+    // Adjust buy sell bias by how close we are to the outer edges of trading (+/- 50)
     double priceShift = (r.nextDouble() * range) - (range / 2.0);
     if (midprice < anchorMidprice) {
       priceShift += Math.pow((anchorMidprice - midprice)/50, 2) * r.nextDouble() * 3;
@@ -150,7 +149,7 @@ public class Simulator {
     }
 
     // Determine the Order
-    final Order o = new Order(side, price, qty);
+    final Order o = orderFactory.newOrder(side, price, qty);
     
     // Decrement the generated orders
     this.genOrders -= 1;
