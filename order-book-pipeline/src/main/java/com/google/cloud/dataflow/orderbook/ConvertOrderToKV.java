@@ -14,12 +14,17 @@
  * limitations under the License.
  */
 
-package com.google.cloud;
+package com.google.cloud.dataflow.orderbook;
 
-import com.google.cloud.orderbook.model.MarketDepth;
 import com.google.cloud.orderbook.model.OrderBookEvent;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.values.KV;
 
-public interface EventConsumer extends AutoCloseable {
-  void accept(OrderBookEvent orderBookEvent);
-  void accept(MarketDepth marketDepth);
+public class ConvertOrderToKV extends DoFn<OrderBookEvent, KV<Long, KV<Long, OrderBookEvent>>> {
+
+  @ProcessElement
+  public void convert(@Element OrderBookEvent event,
+      OutputReceiver<KV<Long, KV<Long, OrderBookEvent>>> outputReceiver) {
+    outputReceiver.output(KV.of(event.getContractId(), KV.of(event.getContractSeqId(), event)));
+  }
 }

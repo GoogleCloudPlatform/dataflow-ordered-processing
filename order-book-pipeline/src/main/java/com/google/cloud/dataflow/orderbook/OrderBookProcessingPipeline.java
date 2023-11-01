@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package com.google.cloud;
+package com.google.cloud.dataflow.orderbook;
 
-import com.google.cloud.orderbook.model.MarketDepth;
-import com.google.cloud.orderbook.model.OrderBookEvent;
+public class OrderBookProcessingPipeline {
 
-public interface EventConsumer extends AutoCloseable {
-  void accept(OrderBookEvent orderBookEvent);
-  void accept(MarketDepth marketDepth);
+  public static void main(String[] args) {
+
+  }
+
 }

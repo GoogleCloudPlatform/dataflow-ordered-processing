@@ -1,3 +1,19 @@
+/*
+ * Copyright 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.google.cloud.orderbook;
 
 import com.google.cloud.orderbook.model.MarketDepth;
@@ -6,10 +22,20 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class OrderBookBuilder {
-  final private TreeMap<Long, Long> prices = new TreeMap<Long,Long>();
-  private OrderBookEvent lastOrderBookEvent = null;
+  final private TreeMap<Long, Long> prices;
+  private OrderBookEvent lastOrderBookEvent;
 
-  public void mutate(OrderBookEvent obe) {
+  public OrderBookBuilder() {
+    this.prices = new TreeMap<>();
+    this.lastOrderBookEvent = null;
+  }
+
+  public OrderBookBuilder(Map<Long, Long> prices, OrderBookEvent lastOrderBookEvent) {
+    this.prices = new TreeMap<>(prices);
+    this.lastOrderBookEvent = lastOrderBookEvent;
+  }
+
+  public void processEvent(OrderBookEvent obe) {
 
     // Record the last orderbook event
     lastOrderBookEvent = obe;
@@ -60,7 +86,7 @@ public class OrderBookBuilder {
   // NOTE: This will produce duplicate MarketDepth events that will
   // contain the same data if the depth changes beyond the depth point,
   // or the change was simply a trade.
-  public MarketDepth produceResult(int depth, boolean withTrade) {
+  public MarketDepth getCurrentMarketDepth(int depth, boolean withTrade) {
 
     // Create market depth
     MarketDepth.Builder b = MarketDepth.newBuilder();
@@ -109,5 +135,13 @@ public class OrderBookBuilder {
      .setContractSeqId(lastOrderBookEvent.getContractSeqId());
 
     return b.build();
+  }
+
+  public Map<Long, Long> getPrices() {
+    return prices;
+  }
+
+  public OrderBookEvent getLastOrderBookEvent() {
+    return lastOrderBookEvent;
   }
 }

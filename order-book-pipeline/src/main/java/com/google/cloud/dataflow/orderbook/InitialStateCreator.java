@@ -14,12 +14,24 @@
  * limitations under the License.
  */
 
-package com.google.cloud;
+package com.google.cloud.dataflow.orderbook;
 
-import com.google.cloud.orderbook.model.MarketDepth;
 import com.google.cloud.orderbook.model.OrderBookEvent;
+import org.apache.beam.sdk.transforms.ProcessFunction;
 
-public interface EventConsumer extends AutoCloseable {
-  void accept(OrderBookEvent orderBookEvent);
-  void accept(MarketDepth marketDepth);
+public class InitialStateCreator implements ProcessFunction<OrderBookEvent, OrderBookMutableState> {
+  private final int depth;
+  private final boolean withTrade;
+
+  public InitialStateCreator(int depth, boolean withTrade) {
+    this.depth = depth;
+    this.withTrade = withTrade;
+  }
+
+  @Override
+  public OrderBookMutableState apply(OrderBookEvent firstEvent) {
+    OrderBookMutableState orderBookMutableState = new OrderBookMutableState(depth, withTrade);
+    orderBookMutableState.mutate(firstEvent);
+    return orderBookMutableState;
+  }
 }

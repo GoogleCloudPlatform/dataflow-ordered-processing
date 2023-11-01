@@ -1,3 +1,19 @@
+/*
+ * Copyright 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.google.cloud;
 
 import com.google.cloud.orderbook.OrderBookBuilder;
@@ -59,7 +75,7 @@ public class App {
     formatter.printHelp(App.class.getSimpleName(), options);
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
 
     String orderTopic = null;
     String marketDepthTopic = null;
@@ -108,8 +124,6 @@ public class App {
         (eventsPerSecond == null) ? 0 : eventsPerSecond,
         simtime,
         eventConsumer);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
   }
 
@@ -150,10 +164,10 @@ public class App {
         eventConsumer.accept(orderBookEvent);
 
         // Modify the orderbook
-        obb.mutate(orderBookEvent);
+        obb.processEvent(orderBookEvent);
 
         // Produce the latest MarketDepth
-        MarketDepth marketDepth = obb.produceResult(2, true);
+        MarketDepth marketDepth = obb.getCurrentMarketDepth(2, true);
 
         // If there's anything new in the MarketDepth, then print to stdout
         if (marketDepth != null) {
