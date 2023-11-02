@@ -64,6 +64,15 @@ ready to be processed. There are multiple coders used by the transform:
 * Key coder. In our case it's pretty simple. The key type is Long and there is an efficient coder
   for Longs - VarLongCoder.
 
+### Create a custom transform to wrap the OrderedEventProcessing transform
+
+This is an optional step and technically you don't need to do it. But if you do - the main pipeline
+code will look more compact and the graph on the Dataflow UI will look "prettier".
+
+### Code the pipeline
+
+The core processing of the pipeline is very simple at this point
+
 # Don't read below this line - needs to be updated for the current demo
 
 [//]: # (TODO: update)
