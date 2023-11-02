@@ -77,7 +77,7 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
     extends
     PTransform<PCollection<KV<KeyT, KV<Long, EventT>>>, OrderedEventProcessorResult<KeyT, ResultT>> {
 
-  public static final int DEFAULT_STATUS_UPDATE_FREQENCY_SECONDS = 5;
+  public static final int DEFAULT_STATUS_UPDATE_FREQUENCY_SECONDS = 5;
   public static final int DEFAULT_INITIAL_SEQUENCE_NUMBER = 1;
   public static final boolean DEFAULT_PRODUCE_DIAGNOSTIC_EVENTS = false;
   private static final boolean DEFAULT_PRODUCE_STATUS_UPDATE_ON_EVERY_EVENT = false;
@@ -105,7 +105,7 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
     // TODO: none of the values are marked as @Nullable and the transform will fail if nulls are provided. But need a better error messaging.
     return new AutoValue_OrderedEventProcessor<>(
         initialStateCreator, eventCoder, stateCoder, keyTypeCoder, resultTypeCoder,
-        DEFAULT_INITIAL_SEQUENCE_NUMBER, DEFAULT_STATUS_UPDATE_FREQENCY_SECONDS,
+        DEFAULT_INITIAL_SEQUENCE_NUMBER, DEFAULT_STATUS_UPDATE_FREQUENCY_SECONDS,
         DEFAULT_PRODUCE_STATUS_UPDATE_ON_EVERY_EVENT,
         DEFAULT_PRODUCE_DIAGNOSTIC_EVENTS, DEFAULT_MAX_ELEMENTS_TO_OUTPUT);
   }
@@ -153,6 +153,12 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
         produceDiagnosticEvents, this.getMaxNumberOfResultsPerOutput());
   }
 
+  /**
+   * Notice that unless the status frequency update is set to 0 or negative number the status
+   * will be produced on every event and with the specified frequency.
+   * @param produceDiagnosticEvents
+   * @return
+   */
   public OrderedEventProcessor<EventT, KeyT, ResultT, StateT> produceStatusUpdatesOnEveryEvent(
       boolean produceDiagnosticEvents) {
     return new AutoValue_OrderedEventProcessor<>(this.getInitialStateCreator(),
