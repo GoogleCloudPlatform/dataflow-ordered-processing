@@ -36,7 +36,7 @@ public abstract class OrderedProcessingStatus {
       Long latestBufferedSequence,
       long numberOfReceivedEvents) {
     return new AutoValue_OrderedProcessingStatus.Builder()
-        .setLastOutputSequence(lastOutputSequence)
+        .setLastProcessedSequence(lastOutputSequence)
         .setNumberOfBufferedEvents(numberOfBufferedEvents)
         .setEarliestBufferedSequence(earliestBufferedSequence)
         .setLatestBufferedSequence(latestBufferedSequence)
@@ -45,7 +45,7 @@ public abstract class OrderedProcessingStatus {
   }
 
   @Nullable
-  public abstract Long getLastOutputSequence();
+  public abstract Long getLastProcessedSequence();
 
   public abstract long getNumberOfBufferedEvents();
 
@@ -73,7 +73,7 @@ public abstract class OrderedProcessingStatus {
     OrderedProcessingStatus that = (OrderedProcessingStatus) obj;
     boolean result =
         Objects.equals(this.getEarliestBufferedSequence(), that.getEarliestBufferedSequence())
-            && Objects.equals(this.getLastOutputSequence(), that.getLastOutputSequence())
+            && Objects.equals(this.getLastProcessedSequence(), that.getLastProcessedSequence())
             && Objects.equals(this.getLatestBufferedSequence(), that.getLatestBufferedSequence())
             && Objects.equals(this.getNumberOfBufferedEvents(), that.getNumberOfBufferedEvents())
             && this.getNumberOfReceivedEvents() == that.getNumberOfReceivedEvents();
@@ -82,7 +82,7 @@ public abstract class OrderedProcessingStatus {
 
   @Override
   public int hashCode() {
-    return Objects.hash(this.getEarliestBufferedSequence(), this.getLastOutputSequence(),
+    return Objects.hash(this.getEarliestBufferedSequence(), this.getLastProcessedSequence(),
         this.getLatestBufferedSequence(), this.getNumberOfBufferedEvents(),
         this.getNumberOfReceivedEvents());
   }
@@ -90,7 +90,7 @@ public abstract class OrderedProcessingStatus {
   @AutoValue.Builder
   public abstract static class Builder {
 
-    public abstract Builder setLastOutputSequence(Long value);
+    public abstract Builder setLastProcessedSequence(Long value);
 
     public abstract Builder setNumberOfBufferedEvents(long value);
 

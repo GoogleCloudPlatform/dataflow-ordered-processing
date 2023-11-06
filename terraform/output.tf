@@ -14,8 +14,12 @@ output "bq-dataset" {
   value = google_bigquery_dataset.demo_dataset.dataset_id
 }
 
-output "order-table-name" {
-  value = google_bigquery_table.order.table_id
+output "market-depth-table-name" {
+  value = google_bigquery_table.market_depth.table_id
+}
+
+output "processing-status-table-name" {
+  value = google_bigquery_table.processing_status.table_id
 }
 
 output "order-topic" {

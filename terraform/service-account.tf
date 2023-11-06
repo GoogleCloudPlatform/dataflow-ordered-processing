@@ -13,11 +13,17 @@ resource "google_project_iam_member" "dataflow_sa_worker" {
   role    = "roles/dataflow.worker"
 }
 
-resource "google_bigquery_table_iam_member" "dataflow_sa_bq_editor" {
+resource "google_bigquery_table_iam_member" "dataflow_sa_bq_editor_market_depth" {
   member = local.member_dataflow_sa
   role   = "roles/bigquery.dataEditor"
   dataset_id = google_bigquery_dataset.demo_dataset.dataset_id
-  table_id = google_bigquery_table.order.id
+  table_id = google_bigquery_table.market_depth.id
+}
+resource "google_bigquery_table_iam_member" "dataflow_sa_bq_editor_processing_status" {
+  member = local.member_dataflow_sa
+  role   = "roles/bigquery.dataEditor"
+  dataset_id = google_bigquery_dataset.demo_dataset.dataset_id
+  table_id = google_bigquery_table.processing_status.id
 }
 
 #resource "google_pubsub_topic_iam_member" "dataflow_sa_topic_publisher" {
@@ -31,7 +37,11 @@ resource "google_pubsub_subscription_iam_member" "dataflow_sa_order_subscriber" 
   role         = "roles/pubsub.subscriber"
   subscription = google_pubsub_subscription.order_subscription.name
 }
-
+resource "google_pubsub_subscription_iam_member" "dataflow_sa_order_viewer" {
+  member       = local.member_dataflow_sa
+  role         = "roles/pubsub.viewer"
+  subscription = google_pubsub_subscription.order_subscription.name
+}
 
 resource "google_storage_bucket_iam_member" "dataflow_sa_temp_bucket_admin" {
   bucket = google_storage_bucket.dataflow-temp.id

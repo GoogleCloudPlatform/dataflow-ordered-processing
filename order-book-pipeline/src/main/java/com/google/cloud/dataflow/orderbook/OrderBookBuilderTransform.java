@@ -24,12 +24,13 @@ import org.apache.beam.sdk.extensions.ordered.OrderedEventProcessor;
 import org.apache.beam.sdk.extensions.ordered.OrderedEventProcessorResult;
 import org.apache.beam.sdk.extensions.protobuf.ProtoCoder;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 
 // TODO: better transform name (remove "transform") and decide if we shoudl use AutoValue approach to construct it.
 public class OrderBookBuilderTransform extends
-    PTransform<PCollection<KV<Long, KV<Long, OrderBookEvent>>>, OrderedEventProcessorResult<Long, MarketDepth>> {
+    PTransform<PCollection<OrderBookEvent>, OrderedEventProcessorResult<Long, MarketDepth>> {
 
   private final int depth;
   private final boolean withTrade;
@@ -53,8 +54,7 @@ public class OrderBookBuilderTransform extends
   }
 
   @Override
-  public OrderedEventProcessorResult<Long, MarketDepth> expand(
-      PCollection<KV<Long, KV<Long, OrderBookEvent>>> input) {
+  public OrderedEventProcessorResult<Long, MarketDepth> expand(PCollection<OrderBookEvent> input) {
     Coder<OrderBookEvent> eventCoder = ProtoCoder.of(OrderBookEvent.class);
     Coder<OrderBookMutableState> stateCoder = OrderBookCoder.of();
     Coder<Long> keyCoder = VarLongCoder.of();
@@ -64,13 +64,16 @@ public class OrderBookBuilderTransform extends
         OrderedEventProcessor.create(new InitialStateCreator(depth, withTrade), eventCoder,
                 stateCoder,
                 keyCoder, marketDepthCoder)
-            .withInitialSequence(1L);
+            .withInitialSequence(0L)
+            .withMaxResultsPerOutput(50000);
     if (produceStatusUpdatesOnEveryEvent) {
       orderedProcessor = orderedProcessor.produceStatusUpdatesOnEveryEvent(true);
     }
 
     orderedProcessor = orderedProcessor.withStatusUpdateFrequencySeconds(statusUpdateFrequency);
 
-    return input.apply("Produce OrderBook", orderedProcessor);
+    return input
+        .apply("Convert to KV", ParDo.of(new ConvertOrderToKV()))
+        .apply("Produce OrderBook", orderedProcessor);
   }
 }

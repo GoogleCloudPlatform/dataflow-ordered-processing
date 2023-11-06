@@ -1,3 +1,4 @@
 **/target/**
 .idea
 .vscode
+/last_launched_pipeline.id

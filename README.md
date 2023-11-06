@@ -69,9 +69,12 @@ ready to be processed. There are multiple coders used by the transform:
 This is an optional step and technically you don't need to do it. But if you do - the main pipeline
 code will look more compact and the graph on the Dataflow UI will look "prettier".
 
+### Decide where you would like to store the results of the processing
+Our pipeline uses BigQuery tables to store the market depths produced by the order builder. You would need to code classes that tranform MarketDepth to TableRows.
+
 ### Code the pipeline
 
-The core processing of the pipeline is very simple at this point
+The core processing of the pipeline is very simple at this point - read the sources, process them and save the output.
 
 # Don't read below this line - needs to be updated for the current demo
 

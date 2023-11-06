@@ -19,30 +19,18 @@
 set -e
 set -u
 
-TYPE=$1
-SUBSCRIPTION=$2
-SUFFIX="$TYPE"
+source ./get-terraform-output.sh
 
-if [ "$#" -ge 3 ]; then
-  PIPELINE_NUMBER=$3
-  SUFFIX="$TYPE-$PIPELINE_NUMBER"
-fi
+worker_parameters="--maxNumWorkers=3"
 
-worker_parameters="--maxNumWorkers=30"
-
-if [ "$#" -ge 4 ]; then
-  number_of_workers=$4
-  worker_parameters="--maxNumWorkers=$number_of_workers --numWorkers=$number_of_workers"
-fi
-
-JOB_NAME="data-processing-${SUFFIX}"
+JOB_NAME="order-book-builder"
 
 EXPERIMENTS=enable_recommendations,enable_lightweight_streaming_update
 
-cd pipeline
+cd order-book-pipeline
 
 set -x
-./gradlew run --args="--jobName=${JOB_NAME} \
+mvn -q compile exec:java -Dexec.args="--jobName=${JOB_NAME} \
  --runner=Dataflow \
  --project=${PROJECT_ID} \
  --region=${GCP_REGION} \
@@ -50,10 +38,10 @@ set -x
  --diskSizeGb=30 \
  --serviceAccount=${DATAFLOW_SA} \
  --experiments=${EXPERIMENTS} \
- --datasetName=${BQ_DATASET} \
- --tableName=${TABLE_NAME} \
- --subscription=${SUBSCRIPTION} \
- --type=${TYPE} \
+ --marketDepthTable=${PROJECT_ID}.${BQ_DATASET}.${MARKET_DEPTH_TABLE_NAME} \
+ --processingStatusTable=${PROJECT_ID}.${BQ_DATASET}.${PROCESSING_STATUS_TABLE_NAME} \
+ --subscription=${ORDER_SUBSCRIPTION} \
+ --tempLocation=${DATAFLOW_TEMP_BUCKET}/temp \
  ${worker_parameters}
  "
  set +x

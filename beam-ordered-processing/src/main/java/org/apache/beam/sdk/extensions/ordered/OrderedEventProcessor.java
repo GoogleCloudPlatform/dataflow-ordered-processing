@@ -834,6 +834,7 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
         return;
       }
 
+      LOG.info("Starting to process batch for key + " + processingStatus.getKey());
       OrderedProcessingDiagnosticEvent.Builder diagnostics = OrderedProcessingDiagnosticEvent.builder();
       diagnostics.setProcessingTime(Instant.now());
 
