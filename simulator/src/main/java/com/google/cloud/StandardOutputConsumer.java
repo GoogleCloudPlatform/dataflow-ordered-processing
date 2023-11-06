@@ -40,9 +40,29 @@ public class StandardOutputConsumer implements EventConsumer {
   }
 
   private static String toString(OrderBookEvent obe) {
+
+    // Last message for all messages
+    if (obe.getLastMessage()) {
+      return String.format("GSEQ:%d LAST GLOBAL MESSAGE",
+        obe.getSeqId()
+      );
+    }
+
+    // Last message for contract
+    if (obe.getLastContractMessage()) {
+      return String.format("GSEQ:%d CONTRACT:%d CSEQ:%d LAST CONTRACT MESSAGE",
+        obe.getSeqId(),
+        obe.getContractId(),
+        obe.getContractSeqId()
+      );
+    }
+
     switch (obe.getType()) {
       case NEW: {
-        return String.format("NEW [%d] %s %d @ %d",
+        return String.format("GSEQ:%d CONTRACT:%d CSEQ:%d NEW [%d] %s %d @ %d",
+            obe.getSeqId(),
+            obe.getContractId(),
+            obe.getContractSeqId(),
             obe.getOrderId(),
             obe.getSide(),
             obe.getQuantityRemaining(),
@@ -50,7 +70,10 @@ public class StandardOutputConsumer implements EventConsumer {
         );
       }
       case EXECUTED: {
-        return String.format("EXE [%d] %s %d @ %d",
+        return String.format("GSEQ:%d CONTRACT:%d CSEQ:%d EXE [%d] %s %d @ %d",
+            obe.getSeqId(),
+            obe.getContractId(),
+            obe.getContractSeqId(),
             obe.getOrderId(),
             obe.getSide(),
             obe.getQuantityFilled(),
@@ -58,7 +81,10 @@ public class StandardOutputConsumer implements EventConsumer {
         );
       }
       case DELETED: {
-        return String.format("CAN [%d] %s %d @ %d",
+        return String.format("GSEQ:%d CONTRACT:%d CSEQ:%d CAN [%d] %s %d @ %d",
+            obe.getSeqId(),
+            obe.getContractId(),
+            obe.getContractSeqId(),
             obe.getOrderId(),
             obe.getSide(),
             obe.getQuantityRemaining(),

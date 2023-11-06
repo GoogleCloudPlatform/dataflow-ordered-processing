@@ -32,6 +32,7 @@
     <maven.compiler.source>11</maven.compiler.source>
     <maven.compiler.target>11</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <protobuf.version>3.25.0</protobuf.version>
   </properties>
 
   <dependencies>
@@ -49,23 +50,41 @@
   <build>
 
     <plugins>
+      <!-- OS detection plugin-->
+      <plugin>
+        <groupId>kr.motd.maven</groupId>
+        <artifactId>os-maven-plugin</artifactId>
+        <version>1.6.2</version>
+        <executions>
+          <execution>
+            <phase>initialize</phase>
+            <goals>
+              <goal>detect</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
       <!-- Protobuf compiler -->
       <plugin>
         <groupId>org.xolstice.maven.plugins</groupId>
         <artifactId>protobuf-maven-plugin</artifactId>
         <version>0.6.1</version>
         <configuration>
-<!--          <protocExecutable>/usr/bin/protoc</protocExecutable>-->
-          <protocExecutable>/Users/slilichenko/Downloads/protoc-24.4-osx-aarch_64/bin/protoc</protocExecutable>
+          <!-- <protocExecutable>/usr/bin/protoc</protocExecutable> -->
+          <!-- <protocExecutable>/Users/slilichenko/Downloads/protoc-24.4-osx-aarch_64/bin/protoc</protocExecutable> -->
+          <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
         </configuration>
-<!--        <executions>-->
-<!--          <execution>-->
-<!--            <goals>-->
-<!--              <goal>compile</goal>-->
-<!--              <goal>test-compile</goal>-->
-<!--            </goals>-->
-<!--          </execution>-->
-<!--        </executions>-->
+        <!--
+        <executions>
+          <execution>
+            <goals>
+              <goal>compile</goal>
+              <goal>test-compile</goal>
+            </goals>
+          </execution>
+        </executions>
+        -->
       </plugin>
     </plugins>
   </build>
