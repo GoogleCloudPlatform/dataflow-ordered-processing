@@ -11,8 +11,21 @@ message OrderBookEvent {
   int64 messageId = 3;    // Message ID
 
   // Global and per-contract sequence ID.
+  //
+  // SequenceID 1 is the always the first message in the sequence.
+  // The first message will have a meaningful OrderBookEvent (side, etc)
+  //
   int64 seqId = 4;
   int64 contractSeqId = 5;
+
+  // This is true when it is the last message for the all contracts.
+  // There will be no meaningful order information associated (or even
+  // contractId).
+  bool lastMessage = 6;
+
+  // This is true when it is the last message for the contract. There will
+  // be no meaningful order information associated.
+  bool lastContractMessage = 7;
 
   // Event type
   // NOTE: Aggressive matching orders will
@@ -24,10 +37,10 @@ message OrderBookEvent {
     EXECUTED = 2;
     DELETED = 3;
   }
-  Type type = 6;
+  Type type = 8;
 
   // OrderID for the passive order.
-  int64 orderId = 7;
+  int64 orderId = 9;
 
   // Side for the passive order.
   enum Side {
@@ -35,15 +48,15 @@ message OrderBookEvent {
     BUY = 1;
     SELL = 2;
   }
-  Side side = 8; // enum Buy/Sell
+  Side side = 10; // enum Buy/Sell
 
-  int64 price = 9;
-  int64 quantity = 10;
-  int64 quantityRemaining = 11;
-  int64 quantityFilled = 12;
+  int64 price = 11;
+  int64 quantity = 12;
+  int64 quantityRemaining = 13;
+  int64 quantityFilled = 14;
 
   // If it is an execution, record the matchNumber
-  int64 matchNumber = 13;
+  int64 matchNumber = 15;
 }
 
 message MarketDepth {

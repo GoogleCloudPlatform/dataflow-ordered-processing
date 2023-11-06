@@ -18,7 +18,6 @@ package com.google.cloud.orderbook;
 
 import com.google.cloud.orderbook.model.OrderBookEvent;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicLong;
 
 /*
  * Order is for the simulator.

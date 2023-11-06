@@ -56,7 +56,8 @@ public class Matcher {
   final private MatcherContext context;
   final private long contractId;
   private long matchId = 0;
-  private long seqId = 0;
+  private long seqId = 1;
+  private boolean isActive = true;
 
   // Create a matcher for a contractId
   public Matcher(MatcherContext context, long contractId) {
@@ -121,9 +122,12 @@ public class Matcher {
   }
 
   public List<OrderBookEvent> add(Order o) {
+    if (!isActive) {
+      return Arrays.asList();
+    }
 
     // Find match events
-    ArrayList<OrderBookEvent> events = match(o);
+    List<OrderBookEvent> events = match(o);
 
     // Stop now if filled (IOC orders not used)
     if (o.getQuantityRemaining() == 0) {
@@ -143,7 +147,11 @@ public class Matcher {
     return events;
   }
 
-  private ArrayList<OrderBookEvent> match(Order o) {
+  private List<OrderBookEvent> match(Order o) {
+    if (!isActive) {
+      return Arrays.asList();
+    }
+
     ArrayList<OrderBookEvent> matches = new ArrayList<>();
 
     // Get the right iterator to match against
@@ -192,6 +200,18 @@ public class Matcher {
     }
 
     return matches;
+  }
+
+  public List<OrderBookEvent> shutdown() {
+    if (!isActive) {
+      return Arrays.asList();
+    }
+
+    isActive = false;
+
+    return Arrays.asList(context.buildFinalOrderBookEvent(
+      seqId++,
+      contractId).build());
   }
 
   private Builder buildEvent(Type type, Order order) {

@@ -21,6 +21,7 @@ import com.google.cloud.orderbook.model.MarketDepth;
 import com.google.cloud.orderbook.model.OrderBookEvent;
 import com.google.cloud.orderbook.MatcherContext;
 import com.google.cloud.simulator.Simulator;
+import java.time.Duration;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.commons.cli.CommandLine;
@@ -36,6 +37,8 @@ public class App {
   static private Options options = new Options();
 
   public static final String LIMIT = "limit";
+
+  public static final String DURATION = "duration";
 
   public static final String SEED = "seed";
 
@@ -56,6 +59,8 @@ public class App {
         .desc("Display the usage documentation.").type(String.class).build());
     options.addOption(Option.builder("l").hasArg(true).longOpt(LIMIT).optionalArg(false)
         .desc("Limit of events to produce").type(Number.class).build());
+    options.addOption(Option.builder("d").hasArg(true).longOpt(DURATION).optionalArg(false)
+        .desc("Duration of exchange before finishing (format in ISO-8601, e.g., PT2M for 2 minutes)").type(String.class).build());
     options.addOption(Option.builder("s").hasArg(true).longOpt(SEED).optionalArg(false)
         .desc("Seed for random number generator (if deterministic)").type(Number.class).build());
     options.addOption(Option.builder("c").hasArg(true).longOpt(CONTRACTS).optionalArg(false)
@@ -83,12 +88,17 @@ public class App {
     Long seed = null;
     Long maxContracts = null;
     Long eventsPerSecond = null;
+    long maxSeconds = 0;
     boolean simtime = false;
     try {
       CommandLineParser parser = new DefaultParser();
       CommandLine line = parser.parse(options, args);
 
-      limit = (Long) line.getParsedOptionValue(LIMIT);
+      limit = (Long)line.getParsedOptionValue(LIMIT);
+
+      if (line.hasOption(DURATION)) {
+        maxSeconds = Duration.parse(line.getOptionValue(DURATION)).getSeconds();
+      }
 
       seed = (Long) line.getParsedOptionValue(SEED);
 
@@ -120,6 +130,7 @@ public class App {
       runSimulator(
         (maxContracts == null) ? 1 : maxContracts,
         (limit == null) ? 0 : limit,
+        maxSeconds,
         (seed == null) ? 0 : seed,
         (eventsPerSecond == null) ? 0 : eventsPerSecond,
         simtime,
@@ -132,7 +143,7 @@ public class App {
    * @param seed  Random seed for running simulator (0 = standard method)
    */
   public static void runSimulator(
-    long maxContracts, long limit, long seed,
+    long maxContracts, long limit, long maxSeconds, long seed,
     long eventsPerSecond, boolean simTime,
     EventConsumer eventConsumer) {
 
@@ -143,21 +154,21 @@ public class App {
     MatcherContext context;
     if (eventsPerSecond > 0) {
       if (simTime) {
-        context = new MatcherContext(eventsPerSecond, System.currentTimeMillis());
+        context = new MatcherContext(eventsPerSecond, System.currentTimeMillis(), maxSeconds);
       } else {
-        context = new MatcherContext(eventsPerSecond);
+        context = new MatcherContext(eventsPerSecond, maxSeconds);
       }
     } else {
       if (simTime) {
         System.out.println("Cannot specify simulated time with no rate!");
         System.exit(1);
       }
-      context = new MatcherContext();
+      context = new MatcherContext(maxSeconds);
     }
 
     OrderBookBuilder obb = new OrderBookBuilder();
 
-    Iterator<List<OrderBookEvent>> it = Simulator.getComplexSimulator(context, 0, maxContracts, 100, limit,
+    Iterator<List<OrderBookEvent>> it = Simulator.getComplexSimulator(context, maxContracts, 100, limit,
         seed);
     while (it.hasNext()) {
       for (OrderBookEvent orderBookEvent : it.next()) {

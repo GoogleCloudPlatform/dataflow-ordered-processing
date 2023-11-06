@@ -19,7 +19,6 @@ package com.google.cloud.simulator;
 import com.google.cloud.orderbook.Matcher;
 import com.google.cloud.orderbook.MatcherContext;
 import com.google.cloud.orderbook.Order;
-import com.google.cloud.orderbook.OrderFactory;
 import com.google.cloud.orderbook.model.OrderBookEvent;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -43,8 +42,15 @@ public class Simulator {
    * @return Iterable<OrderBookEvent> -- produce OrderBookEvents from the simulator
    */
   static public Iterator<List<OrderBookEvent>> getSimpleSimulator(MatcherContext context, int midprice, long genOrders, long seed) {
-    //QueuedProducer<OrderBookEvent> que = new QueuedProducer<>();
     new Simulator(context, 1, 100, genOrders, seed);
+
+    context.addAtShutdown(new Callable<List<OrderBookEvent>>() {
+      @Override
+      public List<OrderBookEvent> call() throws Exception {
+        return Arrays.asList(context.buildFinalOrderBookEvent().build());
+      }
+    });
+
     return context.iterator();
   }
 
@@ -61,16 +67,22 @@ public class Simulator {
    */
   static public Iterator<List<OrderBookEvent>> getComplexSimulator(
       MatcherContext context,
-      long startContract,
-      long endContract,
+      long numContracts,
       long midPrice,
       long genOrders,
       long seed) {
 
     // Start all of the simulators
-    for (long i = startContract; i < endContract; i++) {
+    for (long i = 1; i <= numContracts; i++) {
       new Simulator(context, i, midPrice, genOrders, seed);
     }
+
+    context.addAtShutdown(new Callable<List<OrderBookEvent>>() {
+      @Override
+      public List<OrderBookEvent> call() throws Exception {
+        return Arrays.asList(context.buildFinalOrderBookEvent().build());
+      }
+    });
 
     return context.iterator();
   }
@@ -96,8 +108,6 @@ public class Simulator {
   private long midprice;
   private long genOrders;
 
-  private OrderFactory orderFactory = new OrderFactory();
-
   private Simulator(MatcherContext context, long contractId, long midprice, long genOrders, long seed) {
     this.anchorMidprice = midprice;
     this.midprice = midprice;
@@ -112,6 +122,9 @@ public class Simulator {
     // Queue the first task
     this.context = context;
     this.context.add(0, () -> generateOrder());
+
+    // Queue the last task at shutdown
+    this.context.addAtShutdown(() -> m.shutdown());
   }
 
   private void addExecution(long price, long quantity) {
@@ -165,7 +178,7 @@ public class Simulator {
     }
 
     // Determine the Order
-    final Order o = orderFactory.newOrder(side, price, qty);
+    final Order o = context.newOrder(side, price, qty);
     
     // Decrement the generated orders
     this.genOrders -= 1;

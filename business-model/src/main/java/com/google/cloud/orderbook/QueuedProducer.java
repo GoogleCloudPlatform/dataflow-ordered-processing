@@ -16,6 +16,7 @@
 
 package com.google.cloud.orderbook;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -78,31 +79,98 @@ class QueuedProducer<T> implements Iterator<List<T>> {
     que.add(new QueuedItem<T>(delay, work));
   }
 
+  // At shutdown work queue
+  final private ArrayList<Callable<List<T>>> atShutdownWork = new ArrayList<Callable<List<T>>>();
+
+  /**
+   * Add work to execute when shutting down. All outstanding work is ignored, and these tasks are
+   * executed instead.
+   * 
+   * @param work  Callable for work at shutdown
+   */
+  void addAtShutdown(Callable<List<T>> work) {
+    atShutdownWork.add(work);
+  }
+
+
+  // ShutdownEvents indicate that we've shutdown and are the set of events to return.
+  // Once this ArrayList is empty, there's nothing more to do.
+  private ArrayList<T> shutdownEvents = null;
+
+  /**
+   * Shutdown work queue.
+   * - Stop adding new work to the queue (even if asked)
+   * - Stop processing work in the queue
+   * - Execute the shutdown work
+   * - Stop returning events from next() after that
+   */
+  void shutdown() {
+
+    // If already shutdown, stop now.
+    if (shutdownEvents != null) {
+      return;
+    }
+
+    // Collect all of the final events
+    shutdownEvents = new ArrayList<T>();
+    for (Callable<List<T>> task : atShutdownWork) {
+      try {
+        shutdownEvents.addAll(task.call());
+      } catch (Exception e) {
+        System.out.println("Exception: " + e.toString());
+      }
+    }
+  }
+
   @Override
   public boolean hasNext() {
+    if (shutdownEvents != null) {
+      return !shutdownEvents.isEmpty();
+    }
     return !que.isEmpty();
   }
 
   @Override
   public List<T> next() {
 
+    // If already shutdown, return empty list.
+    //
+    // This should not happen, as a shutdown() should be called
+    // within the work itself.
+    if (shutdownEvents != null) {
+      return Arrays.asList();
+    }
+
     // Get next item to execute -- if nothing is there,
     // we need to stop and return null.
+    Callable<List<T>> workTask = null;
     QueuedItem<T> t = this.que.poll();
     if (t == null) {
       return null;
     }
-
-    // Update the last tick (for relative delays)
-    this.lastTick = t.tick;
+    workTask = t.work;
+    lastTick = t.tick;
 
     // Execute the work
     // On exception, return empty list to keep going.
+    List<T> results = null;
     try {
-      return t.work.call();
+      results = workTask.call();
     } catch (Exception e) {
       System.out.println("Exception: " + e.toString());
       return Arrays.asList();
     }
+
+    // If not shutdown, return teh results
+    if (shutdownEvents == null) {
+      return results;
+    }
+
+    // Return the shutdownEvents, and set the shutdownEvents to empty
+    // so we only return it once
+    List<T> returnEvents = shutdownEvents;
+    shutdownEvents = new ArrayList<T>();
+
+    return returnEvents;
   }
 }

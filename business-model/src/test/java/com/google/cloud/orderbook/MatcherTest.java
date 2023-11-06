@@ -56,24 +56,24 @@ public class MatcherTest {
 
   @Test
   public void matchTest() {
-    Matcher m = new Matcher(new MatcherContext(10, startTime), 1);
+    MatcherContext context = new MatcherContext(10, startTime);
+    Matcher m = new Matcher(context, 1);
 
-    OrderFactory orderFactory = new OrderFactory();
-    expectMatches(m.add(orderFactory.newOrder(OrderBookEvent.Side.SELL, 100, 100)), Arrays.asList(),
+    expectMatches(m.add(context.newOrder(OrderBookEvent.Side.SELL, 100, 100)), Arrays.asList(),
         Arrays.asList());
-    expectMatches(m.add(orderFactory.newOrder(OrderBookEvent.Side.SELL, 100, 100)), Arrays.asList(),
+    expectMatches(m.add(context.newOrder(OrderBookEvent.Side.SELL, 100, 100)), Arrays.asList(),
         Arrays.asList());
-    expectMatches(m.add(orderFactory.newOrder(OrderBookEvent.Side.SELL, 100, 100)), Arrays.asList(),
+    expectMatches(m.add(context.newOrder(OrderBookEvent.Side.SELL, 100, 100)), Arrays.asList(),
         Arrays.asList());
-    expectMatches(m.add(orderFactory.newOrder(OrderBookEvent.Side.SELL, 101, 100)), Arrays.asList(),
+    expectMatches(m.add(context.newOrder(OrderBookEvent.Side.SELL, 101, 100)), Arrays.asList(),
         Arrays.asList());
-    expectMatches(m.add(orderFactory.newOrder(OrderBookEvent.Side.SELL, 101, 100)), Arrays.asList(),
+    expectMatches(m.add(context.newOrder(OrderBookEvent.Side.SELL, 101, 100)), Arrays.asList(),
         Arrays.asList());
-    expectMatches(m.add(orderFactory.newOrder(OrderBookEvent.Side.SELL, 102, 100)), Arrays.asList(),
+    expectMatches(m.add(context.newOrder(OrderBookEvent.Side.SELL, 102, 100)), Arrays.asList(),
         Arrays.asList());
 
     expectMatches(
-        m.add(orderFactory.newOrder(OrderBookEvent.Side.BUY, 100, 150)),
+        m.add(context.newOrder(OrderBookEvent.Side.BUY, 100, 150)),
         Arrays.asList(100L, 100L),
         Arrays.asList(100L, 50L)
     );
@@ -81,12 +81,12 @@ public class MatcherTest {
 
   @Test
   public void simpleTest() {
-    Matcher m = new Matcher(new MatcherContext(1000, startTime), 1);
+    MatcherContext context = new MatcherContext(1000, startTime);
+    Matcher m = new Matcher(context, 1);
 
-    OrderFactory orderFactory = new OrderFactory();
     // Add new sell order of q:100, p:100
     addOrder(m,
-        orderFactory.newOrder(OrderBookEvent.Side.SELL, 100, 100),
+        context.newOrder(OrderBookEvent.Side.SELL, 100, 100),
         OrderBookEvent.newBuilder()
             .setTimestampMS(startTime)
             .setSeqId(0)
@@ -107,7 +107,7 @@ public class MatcherTest {
     // See execution of original sell order
 
     addOrder(m,
-        orderFactory.newOrder(OrderBookEvent.Side.BUY, 100, 100),
+        context.newOrder(OrderBookEvent.Side.BUY, 100, 100),
         OrderBookEvent.newBuilder()
             .setTimestampMS(startTime)
             .setSeqId(1)
