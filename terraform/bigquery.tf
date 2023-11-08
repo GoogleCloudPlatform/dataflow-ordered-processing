@@ -118,12 +118,6 @@ schema = <<EOF
     "name": "status_ts",
     "type": "TIMESTAMP"
   },
-    {
-    "mode": "REQUIRED",
-    "name": "ingest_ts",
-    "type": "TIMESTAMP",
-    "defaultValueExpression": "CURRENT_TIMESTAMP()"
-  },
   {
     "mode": "REQUIRED",
     "name": "received_count",
@@ -148,6 +142,17 @@ schema = <<EOF
     "mode": "NULLABLE",
     "name": "latest_buffered_sequence",
     "type": "INTEGER"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "last_event_received",
+    "type": "BOOLEAN"
+  },
+    {
+    "mode": "REQUIRED",
+    "name": "ingest_ts",
+    "type": "TIMESTAMP",
+    "defaultValueExpression": "CURRENT_TIMESTAMP()"
   }
 ]
 EOF

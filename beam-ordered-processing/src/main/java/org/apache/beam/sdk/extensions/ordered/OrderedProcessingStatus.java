@@ -34,13 +34,15 @@ public abstract class OrderedProcessingStatus {
       long numberOfBufferedEvents,
       Long earliestBufferedSequence,
       Long latestBufferedSequence,
-      long numberOfReceivedEvents) {
+      long numberOfReceivedEvents,
+      boolean lastEventReceived) {
     return new AutoValue_OrderedProcessingStatus.Builder()
         .setLastProcessedSequence(lastOutputSequence)
         .setNumberOfBufferedEvents(numberOfBufferedEvents)
         .setEarliestBufferedSequence(earliestBufferedSequence)
         .setLatestBufferedSequence(latestBufferedSequence)
         .setNumberOfReceivedEvents(numberOfReceivedEvents)
+        .setLastEventReceived(lastEventReceived)
         .setStatusDate(Instant.now()).build();
   }
 
@@ -62,6 +64,8 @@ public abstract class OrderedProcessingStatus {
   public abstract Long getLatestBufferedSequence();
 
   public abstract long getNumberOfReceivedEvents();
+
+  public abstract boolean isLastEventReceived();
 
   public abstract Instant getStatusDate();
 
@@ -99,6 +103,8 @@ public abstract class OrderedProcessingStatus {
     public abstract Builder setLatestBufferedSequence(Long value);
 
     public abstract Builder setNumberOfReceivedEvents(long value);
+
+    public abstract Builder setLastEventReceived(boolean value);
 
     public abstract Builder setStatusDate(Instant value);
 

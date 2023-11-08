@@ -89,8 +89,8 @@ public class MatcherTest {
         context.newOrder(OrderBookEvent.Side.SELL, 100, 100),
         OrderBookEvent.newBuilder()
             .setTimestampMS(startTime)
-            .setSeqId(0)
-            .setContractSeqId(0)
+            .setSeqId(1)
+            .setContractSeqId(1)
             .setContractId(1)
             .setType(OrderBookEvent.Type.NEW)
             .setOrderId(1)

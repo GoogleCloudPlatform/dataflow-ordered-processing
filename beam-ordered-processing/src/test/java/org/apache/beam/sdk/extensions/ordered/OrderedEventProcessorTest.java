@@ -21,14 +21,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import org.apache.beam.sdk.coders.CannotProvideCoderException;
 import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.DefaultCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.coders.VarIntCoder;
@@ -68,10 +65,6 @@ public class OrderedEventProcessorTest {
     public StringBufferState(String initialEvent, int emissionFrequency) {
       this.emissionFrequency = emissionFrequency;
       mutate(initialEvent);
-    }
-
-    public void setEmissionFrequency(int frequency) {
-      emissionFrequency = frequency;
     }
 
     final private StringBuilder sb = new StringBuilder();
@@ -119,7 +112,7 @@ public class OrderedEventProcessorTest {
     @Override
     public void encode(StringBufferState value,
         @UnknownKeyFor @NonNull @Initialized OutputStream outStream)
-        throws @UnknownKeyFor @NonNull @Initialized CoderException, @UnknownKeyFor @NonNull @Initialized IOException {
+        throws IOException {
       INT_CODER.encode(value.emissionFrequency, outStream);
       LONG_CODER.encode(value.currentlyEmittedElementNumber, outStream);
       STRING_CODER.encode(value.sb.toString(), outStream);
@@ -127,7 +120,7 @@ public class OrderedEventProcessorTest {
 
     @Override
     public StringBufferState decode(@UnknownKeyFor @NonNull @Initialized InputStream inStream)
-        throws @UnknownKeyFor @NonNull @Initialized CoderException, @UnknownKeyFor @NonNull @Initialized IOException {
+        throws IOException {
       int emissionFrequency = INT_CODER.decode(inStream);
       long currentlyEmittedElementNumber = LONG_CODER.decode(inStream);
       String decoded = STRING_CODER.decode(inStream);
@@ -142,19 +135,55 @@ public class OrderedEventProcessorTest {
     }
 
     @Override
-    public void verifyDeterministic()
-        throws @UnknownKeyFor @NonNull @Initialized NonDeterministicException {
+    public void verifyDeterministic() {
 
     }
 
     @Override
-    public @UnknownKeyFor @NonNull @Initialized boolean consistentWithEquals() {
+    public boolean consistentWithEquals() {
       return true;
     }
 
     @Override
     public @UnknownKeyFor @NonNull @Initialized Object structuralValue(StringBufferState value) {
       return super.structuralValue(value);
+    }
+  }
+
+  static class StateInitializer implements ProcessFunction<String, StringBufferState> {
+
+    private final int emissionFrequency;
+
+    StateInitializer(int frequency) {
+      emissionFrequency = frequency;
+    }
+
+    @Override
+    public StringBufferState apply(String input)
+        throws @UnknownKeyFor@NonNull@Initialized Exception {
+      return new StringBufferState(
+          input,
+          emissionFrequency);
+    }
+  }
+
+  static class StringBufferEventExaminer implements EventExaminer<String> {
+
+    private final long initialSequence;
+
+    public StringBufferEventExaminer(long initialSequence) {
+      this.initialSequence = initialSequence;
+    }
+
+    @Override
+    public boolean isInitialEvent(long sequenceNumber, String input) {
+      return sequenceNumber == initialSequence;
+    }
+
+    @Override
+    public boolean isLastEvent(long sequenceNumber, String input) {
+      // TODO: implement and test
+      return false;
     }
   }
 
@@ -198,8 +227,8 @@ public class OrderedEventProcessorTest {
     testProcessing(new Event[]{Event.create(0, "id-1", "a"), Event.create(1, "id-1", "b"),
             Event.create(2, "id-1", "c"), Event.create(3, "id-1", "d"), Event.create(0, "id-2", "a"),
             Event.create(1, "id-2", "b"),},
-        new KV[]{KV.of("id-1", OrderedProcessingStatus.create(3L, 0, null, null, 4)),
-            KV.of("id-2", OrderedProcessingStatus.create(1L, 0, null, null, 2)),},
+        new KV[]{KV.of("id-1", OrderedProcessingStatus.create(3L, 0, null, null, 4, false)),
+            KV.of("id-2", OrderedProcessingStatus.create(1L, 0, null, null, 2, false)),},
         new KV[]{KV.of("id-1", "a"), KV.of("id-1", "ab"), KV.of("id-1", "abc"),
             KV.of("id-1", "abcd"), KV.of("id-2", "a"), KV.of("id-2", "ab"),}, 1, 0, 1000, false);
   }
@@ -211,8 +240,8 @@ public class OrderedEventProcessorTest {
             // Generate sequence gap for id-2
             Event.create(1, "id-2", "b"), Event.create(2, "id-2", "c"), Event.create(4, "id-2", "e"),
             Event.create(0, "id-2", "a"), Event.create(3, "id-2", "d"),},
-        new KV[]{KV.of("id-1", OrderedProcessingStatus.create(3L, 0, null, null, 4)),
-            KV.of("id-2", OrderedProcessingStatus.create(4L, 0, null, null, 5))},
+        new KV[]{KV.of("id-1", OrderedProcessingStatus.create(3L, 0, null, null, 4, false)),
+            KV.of("id-2", OrderedProcessingStatus.create(4L, 0, null, null, 5, false))},
         new KV[]{KV.of("id-1", "a"), KV.of("id-1", "ab"), KV.of("id-1", "abc"),
             KV.of("id-1", "abcd"), KV.of("id-2", "a"), KV.of("id-2", "ab"), KV.of("id-2", "abc"),
             KV.of("id-2", "abcd"), KV.of("id-2", "abcde"),}, 1, 0, 1000, false);
@@ -224,8 +253,8 @@ public class OrderedEventProcessorTest {
 //   Excluded                     Event.create(1, "id-1", "b"),
             Event.create(0, "id-1", "a"), Event.create(3, "id-1", "d"), Event.create(0, "id-2", "a"),
             Event.create(1, "id-2", "b"),},
-        new KV[]{KV.of("id-1", OrderedProcessingStatus.create(0L, 2, 2L, 3L, 3)),
-            KV.of("id-2", OrderedProcessingStatus.create(1L, 0, null, null, 2))},
+        new KV[]{KV.of("id-1", OrderedProcessingStatus.create(0L, 2, 2L, 3L, 3, false)),
+            KV.of("id-2", OrderedProcessingStatus.create(1L, 0, null, null, 2, false))},
         new KV[]{KV.of("id-1", "a"), KV.of("id-2", "a"), KV.of("id-2", "ab")}, 1, 0, 1000, false);
   }
 
@@ -234,8 +263,8 @@ public class OrderedEventProcessorTest {
     testProcessing(new Event[]{Event.create(2, "id-1", "c"), Event.create(1, "id-1", "b"),
             Event.create(0, "id-1", "a"), Event.create(3, "id-1", "d"), Event.create(0, "id-2", "a"),
             Event.create(1, "id-2", "b"),},
-        new KV[]{KV.of("id-1", OrderedProcessingStatus.create(3L, 0, null, null, 4)),
-            KV.of("id-2", OrderedProcessingStatus.create(1L, 0, null, null, 2))},
+        new KV[]{KV.of("id-1", OrderedProcessingStatus.create(3L, 0, null, null, 4, false)),
+            KV.of("id-2", OrderedProcessingStatus.create(1L, 0, null, null, 2, false))},
         new KV[]{KV.of("id-1", "a"),
 //  Skipped                      KV.of("id-1", "ab"),
             KV.of("id-1", "abc"),
@@ -262,7 +291,7 @@ public class OrderedEventProcessorTest {
     List<KV<String, OrderedProcessingStatus>> expectedStatuses = new ArrayList<>(
         sequences.length + 10);
 
-    StringBuffer output = new StringBuffer();
+    StringBuilder output = new StringBuilder();
     String outputPerElement = ".";
     String key = "id-1";
 
@@ -279,22 +308,22 @@ public class OrderedEventProcessorTest {
         // Last event will result in a batch of events being produced. That's why it's excluded here.
         expectedStatuses.add(KV.of(key,
             OrderedProcessingStatus.create(null, bufferedEventCount, 2L, sequence,
-                bufferedEventCount)));
+                bufferedEventCount, false)));
       }
     }
 
     // Statuses produced by the batched processing
     for (int i = 1 + maxResultsPerOutput; i < sequences.length; i += maxResultsPerOutput) {
-      Long lastOutputSequence = Long.valueOf(i);
+      long lastOutputSequence = i;
       expectedStatuses.add(KV.of(key,
           OrderedProcessingStatus.create(lastOutputSequence, sequences.length - lastOutputSequence,
-              lastOutputSequence + 1, (long) sequences.length, sequences.length)));
+              lastOutputSequence + 1, (long) sequences.length, sequences.length, false)));
     }
 
     //-- Final status - indicates that everything has been fully processed
     expectedStatuses.add(KV.of(key,
-        OrderedProcessingStatus.create(Long.valueOf(sequences.length), 0, null, null,
-            sequences.length)));
+        OrderedProcessingStatus.create((long) sequences.length, 0, null, null,
+            sequences.length, false)));
 
     testProcessing(events.toArray(Event[]::new), expectedStatuses.toArray(KV[]::new),
         expectedOutput.toArray(KV[]::new), 1,
@@ -305,73 +334,50 @@ public class OrderedEventProcessorTest {
   public void testSequenceGapProcessingInBufferedOutput() throws CannotProvideCoderException {
     int maxResultsPerOutput = 3;
 
-    long[] sequences = new long[] {
-        2, 3,
+    long[] sequences = new long[]{2, 3,
         /* Once 1 arrives, 1,2,3 will be produced, with earliestBuffered listed as 4.
         Next read of maxResultsPerOutput will read 3 up to 7, which wll return nothing and
         will require an extra read.
          */
-        7, 8, 9, 10, 1, 4, 5, 6
-    };
+        7, 8, 9, 10, 1, 4, 5, 6};
 
     List<Event> events = new ArrayList<>(sequences.length);
     List<KV<String, String>> expectedOutput = new ArrayList<>(sequences.length);
 
-    StringBuffer output = new StringBuffer();
+    StringBuilder output = new StringBuilder();
     String outputPerElement = ".";
     String key = "id-1";
 
-    int bufferedEventCount = 0;
-
     for (long sequence : sequences) {
-      ++bufferedEventCount;
-
       events.add(Event.create(sequence, key, outputPerElement));
       output.append(outputPerElement);
       expectedOutput.add(KV.of(key, output.toString()));
     }
 
     int numberOfReceivedEvents = 0;
-    KV<String, OrderedProcessingStatus>[] expectedStatuses = new KV[]{
+    KV<String, OrderedProcessingStatus>[] expectedStatuses = new KV[]{KV.of(key,
+        OrderedProcessingStatus.create(null, 1, 2L, 2L, ++numberOfReceivedEvents, false)),
         KV.of(key,
-            OrderedProcessingStatus.create(null, 1,
-                2L, 2L, ++numberOfReceivedEvents)),
+            OrderedProcessingStatus.create(null, 2, 2L, 3L, ++numberOfReceivedEvents, false)),
         KV.of(key,
-            OrderedProcessingStatus.create(null, 2,
-                2L, 3L, ++numberOfReceivedEvents)),
+            OrderedProcessingStatus.create(null, 3, 2L, 7L, ++numberOfReceivedEvents, false)),
         KV.of(key,
-            OrderedProcessingStatus.create(null, 3,
-                2L, 7L, ++numberOfReceivedEvents)),
+            OrderedProcessingStatus.create(null, 4, 2L, 8L, ++numberOfReceivedEvents, false)),
         KV.of(key,
-            OrderedProcessingStatus.create(null, 4,
-                2L, 8L, ++numberOfReceivedEvents)),
+            OrderedProcessingStatus.create(null, 5, 2L, 9L, ++numberOfReceivedEvents, false)),
         KV.of(key,
-            OrderedProcessingStatus.create(null, 5,
-                2L, 9L, ++numberOfReceivedEvents)),
-        KV.of(key,
-            OrderedProcessingStatus.create(null, 6,
-                2L, 10L, ++numberOfReceivedEvents)),
+            OrderedProcessingStatus.create(null, 6, 2L, 10L, ++numberOfReceivedEvents, false)),
         // --- 1 has appeared and caused the batch to be sent out.
-        KV.of(key,
-            OrderedProcessingStatus.create(3L, 4,
-                4L, 10L, ++numberOfReceivedEvents)),
-        KV.of(key,
-            OrderedProcessingStatus.create(4L, 4,
-                7L, 10L, ++numberOfReceivedEvents)),
-        KV.of(key,
-            OrderedProcessingStatus.create(5L, 4,
-                7L, 10L, ++numberOfReceivedEvents)),
+        KV.of(key, OrderedProcessingStatus.create(3L, 4, 4L, 10L, ++numberOfReceivedEvents, false)),
+        KV.of(key, OrderedProcessingStatus.create(4L, 4, 7L, 10L, ++numberOfReceivedEvents, false)),
+        KV.of(key, OrderedProcessingStatus.create(5L, 4, 7L, 10L, ++numberOfReceivedEvents, false)),
         // --- 6 came and 6, 7, and 8 got output
         KV.of(key,
-            OrderedProcessingStatus.create(9L, 1,
-                10L, 10L, ++numberOfReceivedEvents)),
+            OrderedProcessingStatus.create(9L, 1, 10L, 10L, ++numberOfReceivedEvents, false)),
         // Last timer run produces the final status. Number of received events doesn't increase,
         // this is the result of a timer processing
         KV.of(key,
-            OrderedProcessingStatus.create(10L, 0,
-                null, null, numberOfReceivedEvents)),
-    };
-
+            OrderedProcessingStatus.create(10L, 0, null, null, numberOfReceivedEvents, false)),};
 
     testProcessing(events.toArray(Event[]::new), expectedStatuses,
         expectedOutput.toArray(KV[]::new), 1,
@@ -404,8 +410,9 @@ public class OrderedEventProcessorTest {
     Coder<String> resultCoder = StringUtf8Coder.of();
 
     OrderedEventProcessor<String, String, String, StringBufferState> orderedEventProcessor = OrderedEventProcessor.create(
-            (ProcessFunction<String, StringBufferState>) event -> new StringBufferState(event,
-                emissionFrequency), eventCoder, stateCoder, keyCoder, resultCoder)
+            new StateInitializer(emissionFrequency), new StringBufferEventExaminer(initialSequence),
+
+            eventCoder, stateCoder, keyCoder, resultCoder)
         .withMaxResultsPerOutput(maxResultsPerOutput).withInitialSequence(initialSequence);
 
     if (produceStatusOnEveryEvent) {

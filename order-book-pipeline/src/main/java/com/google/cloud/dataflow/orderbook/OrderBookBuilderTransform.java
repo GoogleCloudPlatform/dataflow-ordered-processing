@@ -61,7 +61,9 @@ public class OrderBookBuilderTransform extends
     Coder<MarketDepth> marketDepthCoder = ProtoCoder.of(MarketDepth.class);
 
     OrderedEventProcessor<OrderBookEvent, Long, MarketDepth, OrderBookMutableState> orderedProcessor =
-        OrderedEventProcessor.create(new InitialStateCreator(depth, withTrade), eventCoder,
+        OrderedEventProcessor.create(new InitialStateCreator(depth, withTrade),
+                new OrderBookEventExaminer(),
+                eventCoder,
                 stateCoder,
                 keyCoder, marketDepthCoder)
             .withInitialSequence(0L)

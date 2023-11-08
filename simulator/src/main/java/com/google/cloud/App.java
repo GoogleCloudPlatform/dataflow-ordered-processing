@@ -34,7 +34,7 @@ import org.apache.commons.cli.ParseException;
 
 public class App {
 
-  static private Options options = new Options();
+  static private final Options options = new Options();
 
   public static final String LIMIT = "limit";
 
