@@ -56,7 +56,7 @@ public class MatcherTest {
 
   @Test
   public void matchTest() {
-    MatcherContext context = new MatcherContext(10, startTime);
+    MatcherContext context = new MatcherContext(10, startTime, 0);
     Matcher m = new Matcher(context, 1);
 
     expectMatches(m.add(context.newOrder(OrderBookEvent.Side.SELL, 100, 100)), Arrays.asList(),
@@ -81,7 +81,7 @@ public class MatcherTest {
 
   @Test
   public void simpleTest() {
-    MatcherContext context = new MatcherContext(1000, startTime);
+    MatcherContext context = new MatcherContext(1000, startTime, 0);
     Matcher m = new Matcher(context, 1);
 
     // Add new sell order of q:100, p:100
@@ -89,8 +89,8 @@ public class MatcherTest {
         context.newOrder(OrderBookEvent.Side.SELL, 100, 100),
         OrderBookEvent.newBuilder()
             .setTimestampMS(startTime)
-            .setSeqId(0)
-            .setContractSeqId(0)
+            .setSeqId(1)
+            .setContractSeqId(1)
             .setContractId(1)
             .setType(OrderBookEvent.Type.NEW)
             .setOrderId(1)
@@ -110,8 +110,8 @@ public class MatcherTest {
         context.newOrder(OrderBookEvent.Side.BUY, 100, 100),
         OrderBookEvent.newBuilder()
             .setTimestampMS(startTime)
-            .setSeqId(1)
-            .setContractSeqId(1)
+            .setSeqId(2)
+            .setContractSeqId(2)
             .setContractId(1)
             .setType(OrderBookEvent.Type.EXECUTED)
             .setOrderId(1)

@@ -46,20 +46,20 @@ public class OrderBookBuilderTest {
   @Test
   public void simpleTest() {
     OrderBookBuilder builder = new OrderBookBuilder();
-    Matcher m = new Matcher(new MatcherContext(1000, startTime), 1);
+    MatcherContext context = new MatcherContext(1000, startTime, 0);
+    Matcher m = new Matcher(context, 1);
 
-    OrderFactory orderFactory = new OrderFactory();
     // Add a series of orders.
-    add(builder, m, orderFactory.newOrder(OrderBookEvent.Side.BUY, 100, 100));
-    add(builder, m, orderFactory.newOrder(OrderBookEvent.Side.SELL, 101, 100));
+    add(builder, m, context.newOrder(OrderBookEvent.Side.BUY, 100, 100));
+    add(builder, m, context.newOrder(OrderBookEvent.Side.SELL, 101, 100));
 
     MarketDepth d = builder.getCurrentMarketDepth(10, false);
     Assert.assertEquals("expected depth to match", d,
         MarketDepth.newBuilder()
             .setTimestampMS(startTime)
             .setContractId(1)
-            .setContractSeqId(1)
-            .setSeqId(1)
+            .setContractSeqId(2)
+            .setSeqId(2)
             .addAllBids(Arrays.asList(
                 PriceQuantity.newBuilder().setPrice(100).setQuantity(100).build()
             ))
