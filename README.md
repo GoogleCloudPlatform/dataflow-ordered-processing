@@ -87,123 +87,38 @@ would need to code classes that tranform MarketDepth to TableRows.
 The core processing of the pipeline is very simple at this point - read the sources, process them
 and save the output.
 
-# Don't read below this line - needs to be updated for the current demo
+## Analyse the data
 
-[//]: # (TODO: update)
-
-A typical rate is tens of thousands of events per second. A Dataflow pipeline
-named `data-generator-<rate>`
-will be started. You can simulate event load increases by starting additional pipelines. Note, that
-you can't start
-several pipelines with exactly the same rate because the pipeline name needs to be unique.
-
-You can see the current publishing load by summing the rates of all active data generation
-pipelines.
-
-### Analyse the data
-
-All scripts below have time ranges defined in the beginning of the scripts, typically 20 minute
-intervals.
-Adjust them as needed. For example, if you would like to check for a fixed time period add these
-lines after `DECLARE` statements:
-
-```sql
-SET
-start_ts = TIMESTAMP '2023-06-06 08:32:00.00 America/Los_Angeles';
-SET
-end_ts = TIMESTAMP '2023-06-06 08:45:00.00 America/Los_Angeles';
-```
-
-#### Event latencies comparison
+#### See the status of processing per each contract
 
 Use the following query to compare latency of ingestion of the baseline pipeline and the main
 pipeline:
 
 ```sql
-DECLARE
-start_ts DEFAULT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -40 MINUTE);
-DECLARE
-end_ts DEFAULT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -20 MINUTE);
-WITH latency AS (SELECT pipeline_type,
-                        ingest_ts,
-                        publish_ts,
-                        TIMESTAMP_DIFF(ingest_ts, publish_ts, SECOND) latency_secs
-                 FROM pipeline_update.event
-                 WHERE publish_ts BETWEEN start_ts AND end_ts)
-SELECT pipeline_type,
-       COUNT(*)                     total_events,
-       AVG(latency.latency_secs)    average_latency_secs,
-       MIN(latency.latency_secs)    min_latency_secs,
-       MAX(latency.latency_secs)    max_latency_secs,
-       STDDEV(latency.latency_secs) std_deviation
-FROM latency
-GROUP BY pipeline_type
-ORDER BY pipeline_type;
+SELECT
+    *
+FROM
+    `ordered_processing_demo.processing_status`
+        QUALIFY RANK() OVER (PARTITION BY contract_id ORDER BY status_ts DESC, received_count DESC) <= 5
+ORDER BY
+    contract_id,
+    status_ts DESC,
+    received_count DESC
+LIMIT 300
 ```
 
-#### Missing records
-
-To check if there were missing records:
+### Check out the latest market depths for each contract
 
 ```sql
-DECLARE
-start_ts DEFAULT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -40 MINUTE);
-DECLARE
-end_ts DEFAULT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -20 MINUTE);
-SELECT COUNT(*) missed_events,
-FROM pipeline_update.event base
-WHERE base.publish_ts BETWEEN start_ts AND end_ts
-  AND pipeline_type = 'baseline'
-  AND NOT EXISTS(
-        SELECT *
-        FROM pipeline_update.event main
-        WHERE main.publish_ts BETWEEN start_ts AND end_ts
-          AND pipeline_type = 'main'
-          AND base.id = main.id);
+SELECT
+  *
+FROM
+  `ordered_processing_demo.market_depth` QUALIFY RANK() OVER (PARTITION BY contract_id ORDER BY contract_sequence_id DESC) <= 5
+ORDER BY
+  contract_id,
+  contract_sequence_id DESC
+LIMIT 300
 ```
-
-#### Duplicates
-
-Duplicate events
-
-```sql
-DECLARE
-start_ts DEFAULT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -40 MINUTE);
-DECLARE
-end_ts DEFAULT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -20 MINUTE);
-
-SELECT id,
-       pipeline_type,
-       COUNT(*) event_count,
-FROM pipeline_update.event base
-WHERE base.publish_ts BETWEEN start_ts AND end_ts
-GROUP BY id, pipeline_type
-HAVING event_count > 1
-```
-
-#### Duplicate statistics
-
-```sql
-DECLARE
-start_ts DEFAULT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -40 MINUTE);
-DECLARE
-end_ts DEFAULT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -20 MINUTE);
-WITH counts AS (SELECT COUNT(id)          total_event_count,
-                       COUNT(DISTINCT id) event_distinct_count,
-                       pipeline_type,
-                FROM pipeline_update.event base
-                WHERE base.publish_ts BETWEEN start_ts
-                          AND end_ts
-                GROUP BY pipeline_type)
-SELECT event_distinct_count,
-       counts.total_event_count - counts.event_distinct_count AS dups_count,
-       (counts.total_event_count - counts.event_distinct_count) * 100 /
-       counts.event_distinct_count                               dups_percentage,
-       pipeline_type
-FROM counts
-ORDER BY pipeline_type DESC;
-```
-
 ## Cleanup
 
 ```shell
