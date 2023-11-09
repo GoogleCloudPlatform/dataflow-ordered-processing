@@ -61,14 +61,14 @@ class ProcessingState<KeyT> {
    */
   ProcessingState(KeyT key, Long lastOutputSequence, Long earliestBufferedSequence,
       Long latestBufferedSequence, long bufferedRecordCount, long recordsReceived,
-      boolean allEventsProcessed) {
+      boolean lastEventReceived) {
     this(key);
     this.lastOutputSequence = lastOutputSequence;
     this.earliestBufferedSequence = earliestBufferedSequence;
     this.latestBufferedSequence = latestBufferedSequence;
     this.bufferedRecordCount = bufferedRecordCount;
     this.recordsReceived = recordsReceived;
-    this.lastEventReceived = allEventsProcessed;
+    this.lastEventReceived = lastEventReceived;
   }
 
   public Long getLastOutputSequence() {
@@ -231,11 +231,11 @@ class ProcessingState<KeyT> {
       Long latestBufferedSequence = NULLABLE_LONG_CODER.decode(inStream);
       int bufferedRecordCount = INTEGER_CODER.decode(inStream);
       long recordsReceivedCount = LONG_CODER.decode(inStream);
-      boolean allEventsProcessed = BOOLEAN_CODER.decode(inStream);
+      boolean isLastEventReceived = BOOLEAN_CODER.decode(inStream);
       KeyT key = keyCoder.decode(inStream);
 
       return new ProcessingState<>(key, lastOutputSequence, earliestBufferedSequence,
-          latestBufferedSequence, bufferedRecordCount, recordsReceivedCount, allEventsProcessed);
+          latestBufferedSequence, bufferedRecordCount, recordsReceivedCount, isLastEventReceived);
     }
 
     @Override

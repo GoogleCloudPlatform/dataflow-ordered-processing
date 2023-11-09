@@ -157,3 +157,87 @@ schema = <<EOF
 ]
 EOF
 }
+
+resource "google_bigquery_table" "order_event" {
+  deletion_protection = false
+  dataset_id = google_bigquery_dataset.demo_dataset.dataset_id
+  table_id = "order_event"
+  description = "Order Event"
+  clustering = ["contract_id"]
+
+  schema = <<EOF
+[
+  {
+    "mode": "REQUIRED",
+    "name": "contract_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "event_ts",
+    "type": "TIMESTAMP"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "message_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "contract_sequence_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "last_contract_message",
+    "type": "BOOLEAN"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "order_type",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "order_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "side",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "price",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "quantity",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "quantity_remaining",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "quantity_filled",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "match_number",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "ingest_ts",
+    "type": "TIMESTAMP",
+    "defaultValueExpression": "CURRENT_TIMESTAMP()"
+  }
+]
+EOF
+}

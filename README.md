@@ -49,10 +49,18 @@ events:
 
 Data needs to be in the `KV<GrouppingKey<KV<Long,Event>>` PCollection.
 
-### Create a function which will take the first event and create a MutableState
+### Create a class which will take the first event and create a MutableState
 
 This function needs to implement `ProcessFunction<EventType, MutableState>` interface. This function
 is also a place where you can pass the parameters needed to initialize the state.
+
+### Create a class which will examine each event
+
+This class needs to implement EventExaminer interface.
+Ordered processor will need to know when to start processing.
+It also needs to know when the last event for a particular key has been received. This will help
+indicate that all processing for a given key has been completed and allow stopping the process
+status reporting and do the cleanup of the memory stored in the state.
 
 ### Create coders
 
@@ -70,11 +78,14 @@ This is an optional step and technically you don't need to do it. But if you do 
 code will look more compact and the graph on the Dataflow UI will look "prettier".
 
 ### Decide where you would like to store the results of the processing
-Our pipeline uses BigQuery tables to store the market depths produced by the order builder. You would need to code classes that tranform MarketDepth to TableRows.
+
+Our pipeline uses BigQuery tables to store the market depths produced by the order builder. You
+would need to code classes that tranform MarketDepth to TableRows.
 
 ### Code the pipeline
 
-The core processing of the pipeline is very simple at this point - read the sources, process them and save the output.
+The core processing of the pipeline is very simple at this point - read the sources, process them
+and save the output.
 
 # Don't read below this line - needs to be updated for the current demo
 
@@ -88,33 +99,6 @@ several pipelines with exactly the same rate because the pipeline name needs to 
 
 You can see the current publishing load by summing the rates of all active data generation
 pipelines.
-
-### Start the baseline consumption pipeline
-
-This pipeline runs uninterrupted on a dedicated PubSub subscription. The goals are to collect the
-message
-processing latencies under the perfect circumstances and the unique message ids in order to later
-compare them with
-the pipelines being tested.
-
-```shell
-./start-baseline-pipeline.sh
-```
-
-### Start the pipeline which will be updated
-
-```shell
-./start-main-pipeline.sh
-```
-
-### Update the pipeline
-
-We are going to use the same pipeline code to update the existing pipeline - there is no difference
-in processing time
-
-```shell
-./update-pipeline.sh
-```
 
 ### Analyse the data
 
@@ -223,8 +207,7 @@ ORDER BY pipeline_type DESC;
 ## Cleanup
 
 ```shell
-./stop-event-generation.sh
-./stop-processing-pipelines.sh
+./stop-pipeline.sh
 terraform -chdir terraform destroy 
 ```
 

@@ -40,12 +40,10 @@ mvn -q compile exec:java -Dexec.args="--jobName=${JOB_NAME} \
  --experiments=${EXPERIMENTS} \
  --marketDepthTable=${PROJECT_ID}.${BQ_DATASET}.${MARKET_DEPTH_TABLE_NAME} \
  --processingStatusTable=${PROJECT_ID}.${BQ_DATASET}.${PROCESSING_STATUS_TABLE_NAME} \
+ --orderEventTable=${PROJECT_ID}.${BQ_DATASET}.${ORDER_EVENT_TABLE_NAME} \
  --subscription=${ORDER_SUBSCRIPTION} \
  --tempLocation=${DATAFLOW_TEMP_BUCKET}/temp \
  ${worker_parameters}
  "
  set +x
  cd ..
-
-JOB_ID=$(gcloud dataflow jobs list --region "$GCP_REGION" --filter="NAME:${JOB_NAME} AND STATE:Pending" --format="get(JOB_ID)")
-echo "$JOB_ID" > last_launched_pipeline.id

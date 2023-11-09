@@ -77,12 +77,7 @@ public class Simulator {
       new Simulator(context, i, midPrice, genOrders, seed);
     }
 
-    context.addAtShutdown(new Callable<List<OrderBookEvent>>() {
-      @Override
-      public List<OrderBookEvent> call() throws Exception {
-        return Arrays.asList(context.buildFinalOrderBookEvent().build());
-      }
-    });
+    context.addAtShutdown(() -> Arrays.asList(context.buildFinalOrderBookEvent().build()));
 
     return context.iterator();
   }

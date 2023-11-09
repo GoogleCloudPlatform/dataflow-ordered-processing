@@ -16,13 +16,13 @@
 
 package com.google.cloud.dataflow.orderbook;
 
+import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.bigquery.storage.v1.AppendRowsRequest.MissingValueInterpretation;
 import com.google.cloud.orderbook.model.MarketDepth;
 import com.google.cloud.orderbook.model.OrderBookEvent;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.extensions.ordered.OrderedEventProcessorResult;
-import org.apache.beam.sdk.extensions.ordered.OrderedProcessingStatus;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.Method;
@@ -33,7 +33,7 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
-import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
@@ -51,16 +51,21 @@ public class OrderBookProcessingPipeline {
 
     void setSubscription(String value);
 
-    @Description("BigQuery table to write market depths to")
+    @Description("BigQuery table to store market depths")
     @Required
     String getMarketDepthTable();
 
     void setMarketDepthTable(String value);
 
-    @Description("(Optional) BigQuery table to write processing status to")
+    @Description("(Optional) BigQuery table to store processing statuses")
     String getProcessingStatusTable();
 
     void setProcessingStatusTable(String value);
+
+    @Description("(Optional) BigQuery table to store order events")
+    String getOrderEventTable();
+
+    void setOrderEventTable(String value);
 
     @Description("Order Book depth (default is 5)")
     @Required
@@ -96,11 +101,30 @@ public class OrderBookProcessingPipeline {
             options.getOrderBookDepth(),
             options.isIncludeLastTrade()).produceStatusUpdatesOnEveryEvent());
 
-    WriteResult marketDepthWriteResult = processingResults.output().apply(
-        "Persist Market Depth to BigQuery",
-        BigQueryIO.<KV<Long, MarketDepth>>write()
-            .to(options.getMarketDepthTable())
-            .withFormatFunction(new MarketDepthToTableRowConverter())
+    storeInBigQuery(processingResults.output(), options.getMarketDepthTable(), "Market Depth",
+        new MarketDepthToTableRowConverter());
+
+    if (options.getProcessingStatusTable() != null) {
+      storeInBigQuery(processingResults.processingStatuses(), options.getProcessingStatusTable(),
+          "Processing Status",
+          new ProcessingStatusToTableRowConverter());
+    }
+
+    if (options.getOrderEventTable() != null) {
+      storeInBigQuery(orderBookEvents, options.getOrderEventTable(),
+          "Order Event",
+          new OrderBookEventToTableRowConverter());
+    }
+
+    pipeline.run();
+  }
+
+  private static <Input> void storeInBigQuery(PCollection<Input> input, String tableName,
+      String shortTableDescription, SerializableFunction<Input, TableRow> formatFunction) {
+    WriteResult processingStatusWriteResult = input.apply(shortTableDescription + " to BigQuery",
+        BigQueryIO.<Input>write()
+            .to(tableName)
+            .withFormatFunction(formatFunction)
             .withMethod(Method.STORAGE_WRITE_API)
             .withAutoSharding()
             .withTriggeringFrequency(Duration.standardSeconds(3))
@@ -108,29 +132,11 @@ public class OrderBookProcessingPipeline {
             .withCreateDisposition(CreateDisposition.CREATE_NEVER)
             .withDefaultMissingValueInterpretation(MissingValueInterpretation.DEFAULT_VALUE)
     );
-
-    marketDepthWriteResult.getFailedStorageApiInserts().apply("Process Failed Market Depth Inserts",
-        new FailedBigQueryInsertProcessor(options.getMarketDepthTable()));
-
-    if (options.getProcessingStatusTable() != null) {
-      WriteResult processingStatusWriteResult = processingResults.processingStatuses().apply(
-          "Persist Processing Status to BigQuery",
-          BigQueryIO.<KV<Long, OrderedProcessingStatus>>write()
-              .to(options.getProcessingStatusTable())
-              .withFormatFunction(new ProcessingStatusToTableRowConverter())
-              .withMethod(Method.STORAGE_WRITE_API)
-              .withAutoSharding()
-              .withTriggeringFrequency(Duration.standardSeconds(3))
-              .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-              .withCreateDisposition(CreateDisposition.CREATE_NEVER)
-              .withDefaultMissingValueInterpretation(MissingValueInterpretation.DEFAULT_VALUE)
-      );
-      processingStatusWriteResult.getFailedStorageApiInserts()
-          .apply("Process Failed Processing Status Inserts",
-              new FailedBigQueryInsertProcessor(options.getProcessingStatusTable()));
-    }
-
-    pipeline.run();
+    processingStatusWriteResult.getFailedStorageApiInserts()
+        .apply("Failed "
+                + shortTableDescription
+                + " Inserts",
+            new FailedBigQueryInsertProcessor(tableName));
   }
 
 }

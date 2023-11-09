@@ -43,11 +43,10 @@ public class OrderBookBuilderTest {
     }
   }
 
-  // TODO: fix this test
   @Test
   public void simpleTest() {
     OrderBookBuilder builder = new OrderBookBuilder();
-    MatcherContext context = new MatcherContext(1000, startTime);
+    MatcherContext context = new MatcherContext(1000, startTime, 0);
     Matcher m = new Matcher(context, 1);
 
     // Add a series of orders.
@@ -59,8 +58,8 @@ public class OrderBookBuilderTest {
         MarketDepth.newBuilder()
             .setTimestampMS(startTime)
             .setContractId(1)
-            .setContractSeqId(1)
-            .setSeqId(1)
+            .setContractSeqId(2)
+            .setSeqId(2)
             .addAllBids(Arrays.asList(
                 PriceQuantity.newBuilder().setPrice(100).setQuantity(100).build()
             ))

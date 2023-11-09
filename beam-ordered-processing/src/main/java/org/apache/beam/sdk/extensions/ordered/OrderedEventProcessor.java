@@ -567,8 +567,8 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
 
           if (numberOfResultsProduced >= maxNumberOfResultsToProduce) {
 //          Instant timeForNextRun = Instant.now().plus(Duration.standardSeconds(1));
-            LOG.info("Setting the timer to output next batch of events for key "
-                + processingStatus.getKey());
+            LOG.info("Setting the timer to output next batch of events for key '"
+                + processingStatus.getKey() + "'");
             largeBatchEmissionTimer.offset(Duration.millis(1)).setRelative();
             drainEvents = true;
           }
@@ -619,7 +619,7 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
         return;
       }
 
-      LOG.info("Starting to process batch for key + " + processingStatus.getKey());
+      LOG.info("Starting to process batch for key '" + processingStatus.getKey() + "'");
       OrderedProcessingDiagnosticEvent.Builder diagnostics = OrderedProcessingDiagnosticEvent.builder();
       diagnostics.setProcessingTime(Instant.now());
 
@@ -654,7 +654,7 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
               currentStatus.isLastEventReceived())), Instant.now());
 
       if (currentStatus.isProcessingCompleted()) {
-        LOG.info("Processing for key " + currentStatus.getKey() + " is completed.");
+        LOG.info("Processing for key '" + currentStatus.getKey() + "' is completed.");
         return;
       }
       Boolean windowClosed = windowClosedState.read();

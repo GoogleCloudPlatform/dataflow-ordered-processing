@@ -22,6 +22,10 @@ output "processing-status-table-name" {
   value = google_bigquery_table.processing_status.table_id
 }
 
+output "order-event-table-name" {
+  value = google_bigquery_table.order_event.table_id
+}
+
 output "order-topic" {
   value = google_pubsub_topic.order_topic.id
 }

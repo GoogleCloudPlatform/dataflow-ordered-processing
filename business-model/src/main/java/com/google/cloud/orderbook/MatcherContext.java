@@ -45,7 +45,7 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
   private long nextSeqId = 1;
 
   // Queued producer -- used to synchronise the output of the matchers
-  final private QueuedProducer<OrderBookEvent> que = new QueuedProducer<OrderBookEvent>();
+  final private QueuedProducer<OrderBookEvent> que = new QueuedProducer<>();
 
   // Number of milliseconds in a bucket for throttling
   final private static long MILLISECOND_BUCKET_SIZE = 100;
