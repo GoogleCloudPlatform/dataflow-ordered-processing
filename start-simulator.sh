@@ -23,6 +23,6 @@ source ./get-terraform-output.sh
 
 cd simulator
 set -x
-mvn -q exec:java -Dexec.args="--ordertopic=${ORDER_TOPIC} --marketdepthtopic=${MARKET_DEPTH_TOPIC} --limit=100000 --seed=10 --contracts=5"
+mvn -q compile exec:java -Dexec.args="--ordertopic=${ORDER_TOPIC} --marketdepthtopic=${MARKET_DEPTH_TOPIC} --limit=100000 --seed=10 --contracts=5"
 set +x
 cd ..

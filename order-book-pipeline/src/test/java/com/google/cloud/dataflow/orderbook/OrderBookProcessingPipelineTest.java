@@ -60,22 +60,24 @@ public class OrderBookProcessingPipelineTest {
             .setQuantity(20).setPrice(201).setSide(Side.BUY).build());
 
     OrderBookBuilder orderBookBuilder = new OrderBookBuilder();
-    Collection<KV<Long, MarketDepth>> expectedOutput = new ArrayList<>(inputEvents.size());
+    Collection<KV<SessionContractKey, MarketDepth>> expectedOutput = new ArrayList<>(
+        inputEvents.size());
 
     long elementCount = 0;
     for (OrderBookEvent event : inputEvents) {
       elementCount++;
       orderBookBuilder.processEvent(event);
       expectedOutput.add(
-          KV.of(event.getContractId(), orderBookBuilder.getCurrentMarketDepth(depth, withTrade)));
+          KV.of(SessionContractKey.create("", event.getContractId()),
+              orderBookBuilder.getCurrentMarketDepth(depth, withTrade)));
     }
 
     PCollection<OrderBookEvent> events = p.apply("Input", Create.of(inputEvents));
 
-    OrderedEventProcessorResult<Long, MarketDepth> orderedProcessingResult = events.apply(
+    OrderedEventProcessorResult<SessionContractKey, MarketDepth> orderedProcessingResult = events.apply(
         "Process in order", new OrderBookBuilderTransform(depth, withTrade));
 
-    PCollection<KV<Long, MarketDepth>> marketDepthResults = orderedProcessingResult.output();
+    PCollection<KV<SessionContractKey, MarketDepth>> marketDepthResults = orderedProcessingResult.output();
     PAssert.that(marketDepthResults).containsInAnyOrder(expectedOutput);
 
     p.run();
@@ -100,8 +102,9 @@ public class OrderBookProcessingPipelineTest {
     );
 
     OrderBookBuilder orderBookBuilder = new OrderBookBuilder();
-    Collection<KV<Long, MarketDepth>> expectedOutput = new ArrayList<>(inputEvents.size());
-    Collection<KV<Long, OrderedProcessingStatus>> expectedProcessingStatuses = new ArrayList<>(
+    Collection<KV<SessionContractKey, MarketDepth>> expectedOutput = new ArrayList<>(
+        inputEvents.size());
+    Collection<KV<SessionContractKey, OrderedProcessingStatus>> expectedProcessingStatuses = new ArrayList<>(
         inputEvents.size());
 
     long elementCount = 0;
@@ -109,10 +112,11 @@ public class OrderBookProcessingPipelineTest {
       elementCount++;
       orderBookBuilder.processEvent(event);
       expectedOutput.add(
-          KV.of(event.getContractId(), orderBookBuilder.getCurrentMarketDepth(depth, withTrade)));
+          KV.of(SessionContractKey.create("", event.getContractId()),
+              orderBookBuilder.getCurrentMarketDepth(depth, withTrade)));
 
-      expectedProcessingStatuses.add(KV.of(event.getContractId(),
-          OrderedProcessingStatus.create(elementCount, 0, null, null, elementCount, false)));
+      expectedProcessingStatuses.add(KV.of(SessionContractKey.create("", event.getContractId()),
+          OrderedProcessingStatus.create(elementCount, 0, null, null, elementCount, 0, false)));
     }
 
     testStreamingProcessing(depth, withTrade, inputEvents, expectedOutput,
@@ -136,8 +140,9 @@ public class OrderBookProcessingPipelineTest {
             .setQuantity(20).setPrice(201).setSide(Side.BUY).build());
 
     OrderBookBuilder orderBookBuilder = new OrderBookBuilder();
-    Collection<KV<Long, MarketDepth>> expectedOutput = new ArrayList<>(inputEvents.size());
-    Collection<KV<Long, OrderedProcessingStatus>> expectedProcessingStatuses = new ArrayList<>(
+    Collection<KV<SessionContractKey, MarketDepth>> expectedOutput = new ArrayList<>(
+        inputEvents.size());
+    Collection<KV<SessionContractKey, OrderedProcessingStatus>> expectedProcessingStatuses = new ArrayList<>(
         inputEvents.size());
 
     List<OrderBookEvent> sortedEvents = new ArrayList<>(inputEvents);
@@ -148,30 +153,33 @@ public class OrderBookProcessingPipelineTest {
       elementCount++;
       orderBookBuilder.processEvent(event);
       expectedOutput.add(
-          KV.of(event.getContractId(), orderBookBuilder.getCurrentMarketDepth(depth, withTrade)));
+          KV.of(SessionContractKey.create("", event.getContractId()),
+              orderBookBuilder.getCurrentMarketDepth(depth, withTrade)));
     }
 
     elementCount = 0;
 
     ++elementCount;
+    SessionContractKey key = SessionContractKey.create("", contractId);
     expectedProcessingStatuses.add(
-        KV.of(contractId, OrderedProcessingStatus.create(null, 1, 3L, 3L, elementCount, false)));
+        KV.of(key, OrderedProcessingStatus.create(null, 1, 3L, 3L, elementCount, 0, false)));
 
     ++elementCount;
     expectedProcessingStatuses.add(
-        KV.of(contractId, OrderedProcessingStatus.create(null, 2, 2L, 3L, elementCount, false)));
+        KV.of(key, OrderedProcessingStatus.create(null, 2, 2L, 3L, elementCount, 0, false)));
 
     ++elementCount;
     expectedProcessingStatuses.add(
-        KV.of(contractId, OrderedProcessingStatus.create(3L, 0, null, null, elementCount, false)));
+        KV.of(key, OrderedProcessingStatus.create(3L, 0, null, null, elementCount, 0, false)));
 
     testStreamingProcessing(depth, withTrade, inputEvents, expectedOutput,
         expectedProcessingStatuses);
   }
 
   private void testStreamingProcessing(int depth, boolean withTrade,
-      List<OrderBookEvent> inputEvents, Collection<KV<Long, MarketDepth>> expectedOutput,
-      Collection<KV<Long, OrderedProcessingStatus>> expectedProcessingStatuses) {
+      List<OrderBookEvent> inputEvents,
+      Collection<KV<SessionContractKey, MarketDepth>> expectedOutput,
+      Collection<KV<SessionContractKey, OrderedProcessingStatus>> expectedProcessingStatuses) {
     Coder<OrderBookEvent> eventCoder = ProtoCoder.of(OrderBookEvent.class);
 
     // Simulate streaming data arriving with some delays.
@@ -190,15 +198,15 @@ public class OrderBookProcessingPipelineTest {
 
     PCollection<OrderBookEvent> events = p.apply("Input", messageFlow.advanceWatermarkToInfinity());
 
-    OrderedEventProcessorResult<Long, MarketDepth> orderedProcessingResult = events.apply(
+    OrderedEventProcessorResult<SessionContractKey, MarketDepth> orderedProcessingResult = events.apply(
         "Process in order",
         new OrderBookBuilderTransform(depth, withTrade).produceStatusUpdatesOnEveryEvent()
             .produceStatusUpdatesInSeconds(-1));
 
-    PCollection<KV<Long, OrderedProcessingStatus>> processingStatuses = orderedProcessingResult.processingStatuses();
+    PCollection<KV<SessionContractKey, OrderedProcessingStatus>> processingStatuses = orderedProcessingResult.processingStatuses();
     PAssert.that(processingStatuses).containsInAnyOrder(expectedProcessingStatuses);
 
-    PCollection<KV<Long, MarketDepth>> marketDepthResults = orderedProcessingResult.output();
+    PCollection<KV<SessionContractKey, MarketDepth>> marketDepthResults = orderedProcessingResult.output();
     PAssert.that(marketDepthResults).containsInAnyOrder(expectedOutput);
 
     p.run();

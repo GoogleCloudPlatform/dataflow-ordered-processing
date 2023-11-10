@@ -20,11 +20,14 @@ import com.google.cloud.orderbook.model.OrderBookEvent;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 
-public class ConvertOrderToKV extends DoFn<OrderBookEvent, KV<Long, KV<Long, OrderBookEvent>>> {
+public class ConvertOrderToKV extends
+    DoFn<OrderBookEvent, KV<SessionContractKey, KV<Long, OrderBookEvent>>> {
 
   @ProcessElement
   public void convert(@Element OrderBookEvent event,
-      OutputReceiver<KV<Long, KV<Long, OrderBookEvent>>> outputReceiver) {
-    outputReceiver.output(KV.of(event.getContractId(), KV.of(event.getContractSeqId(), event)));
+      OutputReceiver<KV<SessionContractKey, KV<Long, OrderBookEvent>>> outputReceiver) {
+    outputReceiver.output(
+        KV.of(SessionContractKey.create(event.getSessionId(), event.getContractId()),
+            KV.of(event.getContractSeqId(), event)));
   }
 }

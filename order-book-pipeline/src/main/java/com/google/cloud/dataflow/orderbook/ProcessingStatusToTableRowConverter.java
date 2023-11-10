@@ -22,13 +22,14 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 
 public class ProcessingStatusToTableRowConverter implements
-    SerializableFunction<KV<Long, OrderedProcessingStatus>, TableRow> {
+    SerializableFunction<KV<SessionContractKey, OrderedProcessingStatus>, TableRow> {
 
   @Override
-  public TableRow apply(KV<Long, OrderedProcessingStatus> input) {
+  public TableRow apply(KV<SessionContractKey, OrderedProcessingStatus> input) {
     TableRow result = new TableRow();
     OrderedProcessingStatus status = input.getValue();
-    result.set("contract_id", input.getKey());
+    result.set("session_id", input.getKey().getSessionId());
+    result.set("contract_id", input.getKey().getContractId());
     result.set("status_ts", status.getStatusDate());
     result.set("received_count", status.getNumberOfReceivedEvents());
     result.set("buffered_count", status.getNumberOfBufferedEvents());

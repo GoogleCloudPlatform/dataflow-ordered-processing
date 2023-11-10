@@ -25,25 +25,27 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 
 public class MarketDepthToTableRowConverter implements
-    SerializableFunction<KV<Long, MarketDepth>, TableRow> {
+    SerializableFunction<KV<SessionContractKey, MarketDepth>, TableRow> {
 
   @Override
-  public TableRow apply(KV<Long, MarketDepth> input) {
+  public TableRow apply(KV<SessionContractKey, MarketDepth> input) {
     MarketDepth marketDepth = input.getValue();
     TableRow result = new TableRow();
-    result.set("contract_id", marketDepth.getContractId());
+    result.set("session_id", input.getKey().getSessionId());
+    result.set("contract_id", input.getKey().getContractId());
     result.set("message_id", marketDepth.getMessageId());
     result.set("contract_sequence_id", marketDepth.getContractSeqId());
     result.set("bid_count", marketDepth.getBidsCount());
     result.set("offer_count", marketDepth.getOffersCount());
 
-    if(marketDepth.getBidsCount() > 0) {
+    if (marketDepth.getBidsCount() > 0) {
       result.set("bids", getPriceQuantityRepeatedRows(marketDepth.getBidsList()));
     }
-    if(marketDepth.getOffersCount() > 0) {
+    if (marketDepth.getOffersCount() > 0) {
       result.set("offers", getPriceQuantityRepeatedRows(marketDepth.getOffersList()));
     }
 
+//    TODO - check if getLastTrade can be null.
     if(marketDepth.getLastTrade() != null) {
       result.set("last_trade", priceQuantityAsTableRow(marketDepth.getLastTrade()));
     }

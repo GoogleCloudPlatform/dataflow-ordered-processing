@@ -16,21 +16,20 @@
 
 package com.google.cloud.dataflow.orderbook;
 
+import com.google.cloud.dataflow.orderbook.SessionContractKey.SessionContractKeyCoder;
 import com.google.cloud.orderbook.model.MarketDepth;
 import com.google.cloud.orderbook.model.OrderBookEvent;
 import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.coders.VarLongCoder;
 import org.apache.beam.sdk.extensions.ordered.OrderedEventProcessor;
 import org.apache.beam.sdk.extensions.ordered.OrderedEventProcessorResult;
 import org.apache.beam.sdk.extensions.protobuf.ProtoCoder;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 
 // TODO: better transform name (remove "transform") and decide if we shoudl use AutoValue approach to construct it.
 public class OrderBookBuilderTransform extends
-    PTransform<PCollection<OrderBookEvent>, OrderedEventProcessorResult<Long, MarketDepth>> {
+    PTransform<PCollection<OrderBookEvent>, OrderedEventProcessorResult<SessionContractKey, MarketDepth>> {
 
   private final int depth;
   private final boolean withTrade;
@@ -54,13 +53,17 @@ public class OrderBookBuilderTransform extends
   }
 
   @Override
-  public OrderedEventProcessorResult<Long, MarketDepth> expand(PCollection<OrderBookEvent> input) {
+  public OrderedEventProcessorResult<SessionContractKey, MarketDepth> expand(
+      PCollection<OrderBookEvent> input) {
     Coder<OrderBookEvent> eventCoder = ProtoCoder.of(OrderBookEvent.class);
     Coder<OrderBookMutableState> stateCoder = OrderBookCoder.of();
-    Coder<Long> keyCoder = VarLongCoder.of();
+    Coder<SessionContractKey> keyCoder = SessionContractKeyCoder.of();
     Coder<MarketDepth> marketDepthCoder = ProtoCoder.of(MarketDepth.class);
 
-    OrderedEventProcessor<OrderBookEvent, Long, MarketDepth, OrderBookMutableState> orderedProcessor =
+    input.getPipeline().getCoderRegistry()
+        .registerCoderForClass(SessionContractKey.class, SessionContractKeyCoder.of());
+
+    OrderedEventProcessor<OrderBookEvent, SessionContractKey, MarketDepth, OrderBookMutableState> orderedProcessor =
         OrderedEventProcessor.create(new InitialStateCreator(depth, withTrade),
                 new OrderBookEventExaminer(),
                 eventCoder,

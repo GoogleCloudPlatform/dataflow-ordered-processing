@@ -26,6 +26,7 @@ public class OrderBookEventToTableRowConverter implements
   @Override
   public TableRow apply(OrderBookEvent input) {
     TableRow result = new TableRow();
+    result.set("session_id", input.getSessionId());
     result.set("contract_id", input.getContractId());
     result.set("event_ts", input.getTimestampMS());
     result.set("message_id", input.getMessageId());

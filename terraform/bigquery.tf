@@ -9,10 +9,15 @@ resource "google_bigquery_table" "market_depth" {
   dataset_id          = google_bigquery_dataset.demo_dataset.dataset_id
   table_id            = "market_depth"
   description         = "Market Depths"
-  clustering          = ["contract_id"]
+  clustering          = ["session_id", "contract_id"]
 
 schema = <<EOF
 [
+  {
+    "mode": "REQUIRED",
+    "name": "session_id",
+    "type": "STRING"
+  },
   {
     "mode": "REQUIRED",
     "name": "contract_id",
@@ -101,13 +106,18 @@ EOF
 
 resource "google_bigquery_table" "processing_status" {
 deletion_protection = false
-dataset_id = google_bigquery_dataset.demo_dataset.dataset_id
-table_id = "processing_status"
-description = "Ordered Processing Status"
-clustering = ["contract_id"]
+dataset_id          = google_bigquery_dataset.demo_dataset.dataset_id
+table_id            = "processing_status"
+  description       = "Ordered Processing Status"
+  clustering        = ["session_id", "contract_id"]
 
 schema = <<EOF
 [
+  {
+    "mode": "REQUIRED",
+    "name": "session_id",
+    "type": "STRING"
+  },
   {
     "mode": "REQUIRED",
     "name": "contract_id",
@@ -165,13 +175,18 @@ EOF
 
 resource "google_bigquery_table" "order_event" {
   deletion_protection = false
-  dataset_id = google_bigquery_dataset.demo_dataset.dataset_id
-  table_id = "order_event"
-  description = "Order Event"
-  clustering = ["contract_id"]
+  dataset_id          = google_bigquery_dataset.demo_dataset.dataset_id
+  table_id            = "order_event"
+  description         = "Order Event"
+  clustering          = ["session_id", "contract_id"]
 
   schema = <<EOF
 [
+  {
+    "mode": "REQUIRED",
+    "name": "session_id",
+    "type": "STRING"
+  },
   {
     "mode": "REQUIRED",
     "name": "contract_id",

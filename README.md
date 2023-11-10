@@ -97,34 +97,40 @@ pipeline:
 ```sql
 SELECT
     *
-FROM
-    `ordered_processing_demo.processing_status`
-        QUALIFY RANK() OVER (PARTITION BY contract_id ORDER BY status_ts DESC, received_count DESC) <= 5
+FROM `ordered_processing_demo.processing_status` QUALIFY RANK() OVER (PARTITION BY session_id, contract_id ORDER BY status_ts DESC, received_count DESC) <= 5
 ORDER BY
+    session_id,
     contract_id,
     status_ts DESC,
     received_count DESC
-LIMIT 300
+    LIMIT 300
 ```
 
 ### Check out the latest market depths for each contract
 
 ```sql
-SELECT
-  *
-FROM
-  `ordered_processing_demo.market_depth` QUALIFY RANK() OVER (PARTITION BY contract_id ORDER BY contract_sequence_id DESC) <= 5
+SELECT *
+FROM `ordered_processing_demo.market_depth` QUALIFY RANK() OVER (PARTITION BY session_id, contract_id ORDER BY session_id, contract_sequence_id DESC) <= 5
 ORDER BY
-  contract_id,
-  contract_sequence_id DESC
-LIMIT 300
+    session_id,
+    contract_id,
+    contract_sequence_id DESC
+    LIMIT
+    300
 ```
+
 ## Cleanup
 
 ```shell
 ./stop-pipeline.sh
 terraform -chdir terraform destroy 
 ```
+
+## Addtional Improvements
+
+### Store only required elements in buffered objects
+
+### Create dedicated key class for the session security
 
 ## Contributing
 

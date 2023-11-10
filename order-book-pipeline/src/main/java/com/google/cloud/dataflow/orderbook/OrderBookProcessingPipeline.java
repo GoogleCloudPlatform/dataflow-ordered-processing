@@ -34,6 +34,7 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
@@ -96,7 +97,7 @@ public class OrderBookProcessingPipeline {
         PubsubIO.readProtos(
             OrderBookEvent.class).fromSubscription(options.getSubscription()));
 
-    OrderedEventProcessorResult<Long, MarketDepth> processingResults = orderBookEvents
+    OrderedEventProcessorResult<SessionContractKey, MarketDepth> processingResults = orderBookEvents
         .apply("Build Order Book", new OrderBookBuilderTransform(
             options.getOrderBookDepth(),
             options.isIncludeLastTrade()).produceStatusUpdatesOnEveryEvent());
