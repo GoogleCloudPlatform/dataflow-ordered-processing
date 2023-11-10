@@ -200,7 +200,8 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
     };
 
     PCollectionTuple processingResult = input.apply(ParDo.of(
-        new OrderedProcessorDoFn<>(getInitialStateCreator(), getEventExaminer(), getEventCoder(), getStateCoder(),
+        new OrderedProcessorDoFn<>(getInitialStateCreator(), getEventExaminer(), getEventCoder(),
+            getStateCoder(),
             getKeyCoder(), getInitialSequenceNumber(), statusOutput,
             getStatusUpdateFrequencySeconds() <= 0 ? null
                 : Duration.standardSeconds(getStatusUpdateFrequencySeconds()), diagnosticOutput,
@@ -321,7 +322,8 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
      * @param produceStatusUpdateOnEveryEvent
      * @param maxNumberOfResultsToProduce
      */
-    OrderedProcessorDoFn(ProcessFunction<Event, State> initialStateCreator, EventExaminer<Event> eventExaminer, Coder<Event> eventCoder,
+    OrderedProcessorDoFn(ProcessFunction<Event, State> initialStateCreator,
+        EventExaminer<Event> eventExaminer, Coder<Event> eventCoder,
         Coder<State> stateCoder, Coder<Key> keyCoder, long initialSequenceValue,
         TupleTag<KV<Key, OrderedProcessingStatus>> statusTupleTag, Duration statusUpdateFrequency,
         TupleTag<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticEventsTupleTag,
@@ -414,7 +416,9 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
             OrderedProcessingStatus.create(processingStatus.getLastOutputSequence(),
                 processingStatus.getBufferedRecordCount(),
                 processingStatus.getEarliestBufferedSequence(),
-                processingStatus.getLatestBufferedSequence(), processingStatus.getRecordsReceived(),
+                processingStatus.getLatestBufferedSequence(),
+                processingStatus.getRecordsReceived(),
+                processingStatus.getDuplicates(),
                 processingStatus.isLastEventReceived())), statusTimestamp);
       }
     }
@@ -435,6 +439,12 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
         ProcessingState<Key> processingState, ValueState<State> currentStateState,
         OrderedListState<Event> bufferedEventsState,
         OutputReceiver<KV<Key, Result>> resultOutputter, Builder diagnostics) {
+
+      if (processingState.hasAlreadyBeenProcessed(currentSequence)) {
+        //-- TODO: add to statistics. Perhaps need DLQ for these events.
+        return null;
+      }
+
       State state;
       boolean thisIsTheLastEvent = eventExaminer.isLastEvent(currentSequence, currentEvent);
       if (eventExaminer.isInitialEvent(currentSequence, currentEvent)) {
@@ -651,6 +661,7 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
           OrderedProcessingStatus.create(currentStatus.getLastOutputSequence(),
               currentStatus.getBufferedRecordCount(), currentStatus.getEarliestBufferedSequence(),
               currentStatus.getLatestBufferedSequence(), currentStatus.getRecordsReceived(),
+              currentStatus.getDuplicates(),
               currentStatus.isLastEventReceived())), Instant.now());
 
       if (currentStatus.isProcessingCompleted()) {

@@ -35,6 +35,7 @@ public class ProcessingStatusToTableRowConverter implements
     result.set("last_processed_sequence", status.getLastProcessedSequence());
     result.set("earliest_buffered_sequence", status.getEarliestBufferedSequence());
     result.set("latest_buffered_sequence", status.getLatestBufferedSequence());
+    result.set("duplicate_count", status.getDuplicateCount());
     result.set("last_event_received", status.isLastEventReceived());
     return result;
   }

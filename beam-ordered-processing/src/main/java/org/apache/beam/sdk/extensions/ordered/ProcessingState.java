@@ -43,6 +43,8 @@ class ProcessingState<KeyT> {
 
   private long recordsReceived = 0;
 
+  private long duplicates = 0;
+
   private KeyT key;
 
   public ProcessingState(KeyT key) {
@@ -61,6 +63,7 @@ class ProcessingState<KeyT> {
    */
   ProcessingState(KeyT key, Long lastOutputSequence, Long earliestBufferedSequence,
       Long latestBufferedSequence, long bufferedRecordCount, long recordsReceived,
+      long duplicates,
       boolean lastEventReceived) {
     this(key);
     this.lastOutputSequence = lastOutputSequence;
@@ -68,6 +71,7 @@ class ProcessingState<KeyT> {
     this.latestBufferedSequence = latestBufferedSequence;
     this.bufferedRecordCount = bufferedRecordCount;
     this.recordsReceived = recordsReceived;
+    this.duplicates = duplicates;
     this.lastEventReceived = lastEventReceived;
   }
 
@@ -93,6 +97,10 @@ class ProcessingState<KeyT> {
 
   public boolean isLastEventReceived() {
     return lastEventReceived;
+  }
+
+  public long getDuplicates() {
+    return duplicates;
   }
 
   public KeyT getKey() {
@@ -166,18 +174,19 @@ class ProcessingState<KeyT> {
     if (!(o instanceof ProcessingState)) {
       return false;
     }
-    ProcessingState<KeyT> that = (ProcessingState<KeyT>) o;
-    return bufferedRecordCount == that.bufferedRecordCount && lastOutputSequence.equals(
+    ProcessingState<?> that = (ProcessingState<?>) o;
+    return bufferedRecordCount == that.bufferedRecordCount
+        && lastEventReceived == that.lastEventReceived && recordsReceived == that.recordsReceived
+        && duplicates == that.duplicates && Objects.equals(lastOutputSequence,
         that.lastOutputSequence) && Objects.equals(latestBufferedSequence,
         that.latestBufferedSequence) && Objects.equals(earliestBufferedSequence,
-        that.earliestBufferedSequence) && Objects.equals(lastEventReceived, that.lastEventReceived)
-        && Objects.equals(key, that.key);
+        that.earliestBufferedSequence) && key.equals(that.key);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(lastOutputSequence, latestBufferedSequence, earliestBufferedSequence,
-        bufferedRecordCount, key, lastEventReceived);
+        bufferedRecordCount, lastEventReceived, recordsReceived, duplicates, key);
   }
 
   public boolean isProcessingCompleted() {
@@ -190,6 +199,14 @@ class ProcessingState<KeyT> {
 
   public boolean isNextEvent(long sequence) {
     return lastOutputSequence != null && sequence == lastOutputSequence + 1;
+  }
+
+  public boolean hasAlreadyBeenProcessed(long currentSequence) {
+    boolean result = lastOutputSequence != null && lastOutputSequence >= currentSequence;
+    if (result) {
+      duplicates++;
+    }
+    return result;
   }
 
   /**
@@ -220,6 +237,7 @@ class ProcessingState<KeyT> {
       NULLABLE_LONG_CODER.encode(value.getLatestBufferedSequence(), outStream);
       LONG_CODER.encode(value.getBufferedRecordCount(), outStream);
       LONG_CODER.encode(value.getRecordsReceived(), outStream);
+      LONG_CODER.encode(value.getDuplicates(), outStream);
       BOOLEAN_CODER.encode(value.isLastEventReceived(), outStream);
       keyCoder.encode(value.getKey(), outStream);
     }
@@ -231,11 +249,13 @@ class ProcessingState<KeyT> {
       Long latestBufferedSequence = NULLABLE_LONG_CODER.decode(inStream);
       int bufferedRecordCount = INTEGER_CODER.decode(inStream);
       long recordsReceivedCount = LONG_CODER.decode(inStream);
+      long duplicates = LONG_CODER.decode(inStream);
       boolean isLastEventReceived = BOOLEAN_CODER.decode(inStream);
       KeyT key = keyCoder.decode(inStream);
 
       return new ProcessingState<>(key, lastOutputSequence, earliestBufferedSequence,
-          latestBufferedSequence, bufferedRecordCount, recordsReceivedCount, isLastEventReceived);
+          latestBufferedSequence, bufferedRecordCount, recordsReceivedCount, duplicates,
+          isLastEventReceived);
     }
 
     @Override

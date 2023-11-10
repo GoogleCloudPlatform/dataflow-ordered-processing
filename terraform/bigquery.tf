@@ -145,6 +145,11 @@ schema = <<EOF
   },
   {
     "mode": "REQUIRED",
+    "name": "duplicate_count",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "REQUIRED",
     "name": "last_event_received",
     "type": "BOOLEAN"
   },
@@ -185,7 +190,7 @@ resource "google_bigquery_table" "order_event" {
   {
     "mode": "REQUIRED",
     "name": "contract_sequence_id",
-    "type": "STRING"
+    "type": "INTEGER"
   },
   {
     "mode": "REQUIRED",
