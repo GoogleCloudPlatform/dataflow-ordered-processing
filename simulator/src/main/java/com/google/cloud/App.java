@@ -22,6 +22,10 @@ import com.google.cloud.orderbook.model.OrderBookEvent;
 import com.google.cloud.orderbook.MatcherContext;
 import com.google.cloud.simulator.Simulator;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.commons.cli.CommandLine;
@@ -34,7 +38,7 @@ import org.apache.commons.cli.ParseException;
 
 public class App {
 
-  static private Options options = new Options();
+  static private final Options options = new Options();
 
   public static final String LIMIT = "limit";
 
@@ -147,6 +151,8 @@ public class App {
     long eventsPerSecond, boolean simTime,
     EventConsumer eventConsumer) {
 
+    String sessionId = DateTimeFormatter.ofPattern("yyyy-MM-dd.HH:mm").format(LocalDateTime.now());
+
     // Initialize the MatcherContext
     //
     // This object governs the rate of order book events and the timestamp that is
@@ -154,16 +160,17 @@ public class App {
     MatcherContext context;
     if (eventsPerSecond > 0) {
       if (simTime) {
-        context = new MatcherContext(eventsPerSecond, System.currentTimeMillis(), maxSeconds);
+        context = new MatcherContext(eventsPerSecond, System.currentTimeMillis(), maxSeconds,
+            sessionId);
       } else {
-        context = new MatcherContext(eventsPerSecond, maxSeconds);
+        context = new MatcherContext(eventsPerSecond, maxSeconds, sessionId);
       }
     } else {
       if (simTime) {
         System.out.println("Cannot specify simulated time with no rate!");
         System.exit(1);
       }
-      context = new MatcherContext(maxSeconds);
+      context = new MatcherContext(maxSeconds, sessionId);
     }
 
     OrderBookBuilder obb = new OrderBookBuilder();

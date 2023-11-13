@@ -162,7 +162,8 @@ public class MatcherTest {
 
   @Test
   public void matchTest() {
-    MatcherContext context = new MatcherContext(10, startTime, 0);
+    String sessionId = "session-1";
+    MatcherContext context = new MatcherContext(10, startTime, 0, sessionId);
     Matcher m = new Matcher(context, 1);
 
     expectMatches(m.add(context.newOrder(OrderBookEvent.Side.SELL, 100, 100)), Arrays.asList(),
@@ -187,7 +188,8 @@ public class MatcherTest {
 
   @Test
   public void simpleTest() {
-    MatcherContext context = new MatcherContext(1000, startTime, 0);
+    String sessionId = "session-1";
+    MatcherContext context = new MatcherContext(1000, startTime, 0, sessionId);
     Matcher m = new Matcher(context, 1);
 
     // Add new sell order of q:100, p:100
@@ -206,6 +208,7 @@ public class MatcherTest {
             .setQuantityRemaining(100)
             .setQuantityFilled(0)
             .setMatchNumber(0)
+            .setSessionId(sessionId)
             .build()
     );
 
@@ -227,6 +230,7 @@ public class MatcherTest {
             .setQuantityRemaining(0)
             .setQuantityFilled(100)
             .setMatchNumber(0)
+            .setSessionId(sessionId)
             .build()
     );
   }

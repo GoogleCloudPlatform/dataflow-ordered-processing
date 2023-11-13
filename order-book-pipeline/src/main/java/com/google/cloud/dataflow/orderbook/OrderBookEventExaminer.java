@@ -17,17 +17,18 @@
 package com.google.cloud.dataflow.orderbook;
 
 import com.google.cloud.orderbook.model.OrderBookEvent;
-import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.extensions.ordered.EventExaminer;
 
-public class ConvertOrderToKV extends
-    DoFn<OrderBookEvent, KV<SessionContractKey, KV<Long, OrderBookEvent>>> {
+public class OrderBookEventExaminer implements EventExaminer<OrderBookEvent> {
 
-  @ProcessElement
-  public void convert(@Element OrderBookEvent event,
-      OutputReceiver<KV<SessionContractKey, KV<Long, OrderBookEvent>>> outputReceiver) {
-    outputReceiver.output(
-        KV.of(SessionContractKey.create(event.getSessionId(), event.getContractId()),
-            KV.of(event.getContractSeqId(), event)));
+  @Override
+  public boolean isInitialEvent(long sequenceNumber, OrderBookEvent event) {
+    // We assume that all events in a session start with 1.
+    return sequenceNumber == 1L;
+  }
+
+  @Override
+  public boolean isLastEvent(long sequenceNumber, OrderBookEvent event) {
+    return event.getLastContractMessage();
   }
 }

@@ -33,36 +33,33 @@ public class Simulator {
 
   /**
    * Create a simple simulator for one contract
-   * 
+   *
    * @param midprice   Starting midprice (long, e.g., 100)
    * @param genOrders  How many orders to generate and cancel in the simulator (0 = unlimited)
    * @param seed       Random seed (0 = default randomization).
    *                   This allows for deterministic behaviour if needed.
-   * 
+   *
    * @return Iterable<OrderBookEvent> -- produce OrderBookEvents from the simulator
    */
-  static public Iterator<List<OrderBookEvent>> getSimpleSimulator(MatcherContext context, int midprice, long genOrders, long seed) {
-    new Simulator(context, 1, 100, genOrders, seed);
-
-    context.addAtShutdown(new Callable<List<OrderBookEvent>>() {
-      @Override
-      public List<OrderBookEvent> call() throws Exception {
-        return Arrays.asList(context.buildFinalOrderBookEvent().build());
-      }
-    });
-
-    return context.iterator();
-  }
+//  static public Iterator<List<OrderBookEvent>> getSimpleSimulator(MatcherContext context, int midprice, long genOrders, long seed) {
+//    new Simulator(context, sessionId, 1, 100, genOrders, seed);
+//
+//    context.addAtShutdown(new Callable<List<OrderBookEvent>>() {
+//      @Override
+//      public List<OrderBookEvent> call() throws Exception {
+//        return Arrays.asList(context.buildFinalOrderBookEvent().build());
+//      }
+//    });
+//
+//    return context.iterator();
+//  }
 
   /**
    * Create a complex (multiple contract) simulator.
-   * 
-   * @param startContract  Starting contract ID
-   * @param endContract    End contract ID (exclusive)
-   * @param midPrice       Starting mid price for all contracts
-   * @param genOrders      How many orders to generate in total (0 = unlimited)
-   * @param seed           Random seed (0 = default randomization)
-   * 
+   *
+   * @param midPrice  Starting mid price for all contracts
+   * @param genOrders How many orders to generate in total (0 = unlimited)
+   * @param seed      Random seed (0 = default randomization)
    * @return Iterable<OrderbookEvent> -- produce OrderBookEvents from the simulator
    */
   static public Iterator<List<OrderBookEvent>> getComplexSimulator(
@@ -76,6 +73,8 @@ public class Simulator {
     for (long i = 1; i <= numContracts; i++) {
       new Simulator(context, i, midPrice, genOrders, seed);
     }
+
+    context.addAtShutdown(() -> Arrays.asList(context.buildFinalOrderBookEvent().build()));
 
     return context.iterator();
   }

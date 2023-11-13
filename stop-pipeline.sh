@@ -19,10 +19,16 @@
 set -e
 set -u
 
+
+JOB_NAME="order-book-builder"
+
 source ./get-terraform-output.sh
 
-bq rm -f "${PROJECT_ID}:${BQ_DATASET}.${MARKET_DEPTH_TABLE_NAME}"
-bq rm -f "${PROJECT_ID}:${BQ_DATASET}.${PROCESSING_STATUS_TABLE_NAME}"
-bq rm -f "${PROJECT_ID}:${BQ_DATASET}.${ORDER_EVENT_TABLE_NAME}"
+JOB_IDS=$(gcloud dataflow jobs list --region "$GCP_REGION" --filter="NAME:${JOB_NAME} AND STATE:Running" --format="get(JOB_ID)")
 
-terraform -chdir=terraform apply
+IFS=$'\n'
+id_array=($JOB_IDS)
+for (( i=0; i<${#id_array[@]}; i++ )) ; do
+  pipeline_id=${id_array[$i]}
+  gcloud dataflow jobs drain --region "$GCP_REGION" "${pipeline_id}"
+done

@@ -49,10 +49,18 @@ events:
 
 Data needs to be in the `KV<GrouppingKey<KV<Long,Event>>` PCollection.
 
-### Create a function which will take the first event and create a MutableState
+### Create a class which will take the first event and create a MutableState
 
 This function needs to implement `ProcessFunction<EventType, MutableState>` interface. This function
 is also a place where you can pass the parameters needed to initialize the state.
+
+### Create a class which will examine each event
+
+This class needs to implement EventExaminer interface.
+Ordered processor will need to know when to start processing.
+It also needs to know when the last event for a particular key has been received. This will help
+indicate that all processing for a given key has been completed and allow stopping the process
+status reporting and do the cleanup of the memory stored in the state.
 
 ### Create coders
 
@@ -70,163 +78,59 @@ This is an optional step and technically you don't need to do it. But if you do 
 code will look more compact and the graph on the Dataflow UI will look "prettier".
 
 ### Decide where you would like to store the results of the processing
-Our pipeline uses BigQuery tables to store the market depths produced by the order builder. You would need to code classes that tranform MarketDepth to TableRows.
+
+Our pipeline uses BigQuery tables to store the market depths produced by the order builder. You
+would need to code classes that tranform MarketDepth to TableRows.
 
 ### Code the pipeline
 
-The core processing of the pipeline is very simple at this point - read the sources, process them and save the output.
+The core processing of the pipeline is very simple at this point - read the sources, process them
+and save the output.
 
-# Don't read below this line - needs to be updated for the current demo
+## Analyse the data
 
-[//]: # (TODO: update)
-
-A typical rate is tens of thousands of events per second. A Dataflow pipeline
-named `data-generator-<rate>`
-will be started. You can simulate event load increases by starting additional pipelines. Note, that
-you can't start
-several pipelines with exactly the same rate because the pipeline name needs to be unique.
-
-You can see the current publishing load by summing the rates of all active data generation
-pipelines.
-
-### Start the baseline consumption pipeline
-
-This pipeline runs uninterrupted on a dedicated PubSub subscription. The goals are to collect the
-message
-processing latencies under the perfect circumstances and the unique message ids in order to later
-compare them with
-the pipelines being tested.
-
-```shell
-./start-baseline-pipeline.sh
-```
-
-### Start the pipeline which will be updated
-
-```shell
-./start-main-pipeline.sh
-```
-
-### Update the pipeline
-
-We are going to use the same pipeline code to update the existing pipeline - there is no difference
-in processing time
-
-```shell
-./update-pipeline.sh
-```
-
-### Analyse the data
-
-All scripts below have time ranges defined in the beginning of the scripts, typically 20 minute
-intervals.
-Adjust them as needed. For example, if you would like to check for a fixed time period add these
-lines after `DECLARE` statements:
-
-```sql
-SET
-start_ts = TIMESTAMP '2023-06-06 08:32:00.00 America/Los_Angeles';
-SET
-end_ts = TIMESTAMP '2023-06-06 08:45:00.00 America/Los_Angeles';
-```
-
-#### Event latencies comparison
+#### See the status of processing per each contract
 
 Use the following query to compare latency of ingestion of the baseline pipeline and the main
 pipeline:
 
 ```sql
-DECLARE
-start_ts DEFAULT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -40 MINUTE);
-DECLARE
-end_ts DEFAULT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -20 MINUTE);
-WITH latency AS (SELECT pipeline_type,
-                        ingest_ts,
-                        publish_ts,
-                        TIMESTAMP_DIFF(ingest_ts, publish_ts, SECOND) latency_secs
-                 FROM pipeline_update.event
-                 WHERE publish_ts BETWEEN start_ts AND end_ts)
-SELECT pipeline_type,
-       COUNT(*)                     total_events,
-       AVG(latency.latency_secs)    average_latency_secs,
-       MIN(latency.latency_secs)    min_latency_secs,
-       MAX(latency.latency_secs)    max_latency_secs,
-       STDDEV(latency.latency_secs) std_deviation
-FROM latency
-GROUP BY pipeline_type
-ORDER BY pipeline_type;
+SELECT
+    *
+FROM `ordered_processing_demo.processing_status` QUALIFY RANK() OVER (PARTITION BY session_id, contract_id ORDER BY status_ts DESC, received_count DESC) <= 5
+ORDER BY
+    session_id,
+    contract_id,
+    status_ts DESC,
+    received_count DESC
+    LIMIT 300
 ```
 
-#### Missing records
-
-To check if there were missing records:
+### Check out the latest market depths for each contract
 
 ```sql
-DECLARE
-start_ts DEFAULT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -40 MINUTE);
-DECLARE
-end_ts DEFAULT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -20 MINUTE);
-SELECT COUNT(*) missed_events,
-FROM pipeline_update.event base
-WHERE base.publish_ts BETWEEN start_ts AND end_ts
-  AND pipeline_type = 'baseline'
-  AND NOT EXISTS(
-        SELECT *
-        FROM pipeline_update.event main
-        WHERE main.publish_ts BETWEEN start_ts AND end_ts
-          AND pipeline_type = 'main'
-          AND base.id = main.id);
-```
-
-#### Duplicates
-
-Duplicate events
-
-```sql
-DECLARE
-start_ts DEFAULT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -40 MINUTE);
-DECLARE
-end_ts DEFAULT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -20 MINUTE);
-
-SELECT id,
-       pipeline_type,
-       COUNT(*) event_count,
-FROM pipeline_update.event base
-WHERE base.publish_ts BETWEEN start_ts AND end_ts
-GROUP BY id, pipeline_type
-HAVING event_count > 1
-```
-
-#### Duplicate statistics
-
-```sql
-DECLARE
-start_ts DEFAULT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -40 MINUTE);
-DECLARE
-end_ts DEFAULT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -20 MINUTE);
-WITH counts AS (SELECT COUNT(id)          total_event_count,
-                       COUNT(DISTINCT id) event_distinct_count,
-                       pipeline_type,
-                FROM pipeline_update.event base
-                WHERE base.publish_ts BETWEEN start_ts
-                          AND end_ts
-                GROUP BY pipeline_type)
-SELECT event_distinct_count,
-       counts.total_event_count - counts.event_distinct_count AS dups_count,
-       (counts.total_event_count - counts.event_distinct_count) * 100 /
-       counts.event_distinct_count                               dups_percentage,
-       pipeline_type
-FROM counts
-ORDER BY pipeline_type DESC;
+SELECT *
+FROM `ordered_processing_demo.market_depth` QUALIFY RANK() OVER (PARTITION BY session_id, contract_id ORDER BY session_id, contract_sequence_id DESC) <= 5
+ORDER BY
+    session_id,
+    contract_id,
+    contract_sequence_id DESC
+    LIMIT
+    300
 ```
 
 ## Cleanup
 
 ```shell
-./stop-event-generation.sh
-./stop-processing-pipelines.sh
+./stop-pipeline.sh
 terraform -chdir terraform destroy 
 ```
+
+## Addtional Improvements
+
+### Store only required elements in buffered objects
+
+### Create dedicated key class for the session security
 
 ## Contributing
 

@@ -13,28 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.beam.sdk.extensions.ordered;
 
 import java.io.Serializable;
+import org.apache.beam.sdk.values.KV;
 
-/**
- * Mutable state mutates when events apply to it. It will be stored in a Beam state
- */
-public interface MutableState<Event, Result> extends Serializable {
+public interface EventExaminer<Event> extends Serializable {
+  boolean isInitialEvent(long sequenceNumber, Event event);
 
-    /**
-     * The interface assumes that events will mutate the state without the possibility of throwing an error.
-     * TODO: this might be too simplistic and a mechanism for failure of applying the event to a state
-     * would need to be created.
-     *
-     * @param mutation
-     * @return
-     */
-    void mutate(Event mutation);
+  boolean isLastEvent(long sequenceNumber, Event event);
 
-    /**
-     * Will be called after each state mutation. Can return null if the result is not yet ready.
-     * @return
-     */
-    Result produceResult();
 }

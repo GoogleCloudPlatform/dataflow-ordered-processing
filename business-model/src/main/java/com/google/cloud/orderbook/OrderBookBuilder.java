@@ -24,6 +24,7 @@ import java.util.TreeMap;
 public class OrderBookBuilder {
   final private TreeMap<Long, Long> prices;
   private OrderBookEvent lastOrderBookEvent;
+  private boolean receivedLastContractMessage = false;
 
   public OrderBookBuilder() {
     this.prices = new TreeMap<>();
@@ -81,6 +82,8 @@ public class OrderBookBuilder {
       // Return the new quantity -- null (remove) if zero
       return (newQty != 0) ? newQty : null;
     });
+
+    receivedLastContractMessage = obe.getLastContractMessage();
   }
 
   // NOTE: This will produce duplicate MarketDepth events that will
@@ -143,5 +146,9 @@ public class OrderBookBuilder {
 
   public OrderBookEvent getLastOrderBookEvent() {
     return lastOrderBookEvent;
+  }
+
+  public boolean receivedLastContractMessage() {
+    return receivedLastContractMessage;
   }
 }
