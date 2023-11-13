@@ -77,13 +77,6 @@ public class Simulator {
       new Simulator(context, i, midPrice, genOrders, seed);
     }
 
-    context.addAtShutdown(new Callable<List<OrderBookEvent>>() {
-      @Override
-      public List<OrderBookEvent> call() throws Exception {
-        return Arrays.asList(context.buildFinalOrderBookEvent().build());
-      }
-    });
-
     return context.iterator();
   }
 
@@ -122,9 +115,6 @@ public class Simulator {
     // Queue the first task
     this.context = context;
     this.context.add(0, () -> generateOrder());
-
-    // Queue the last task at shutdown
-    this.context.addAtShutdown(() -> m.shutdown());
   }
 
   private void addExecution(long price, long quantity) {

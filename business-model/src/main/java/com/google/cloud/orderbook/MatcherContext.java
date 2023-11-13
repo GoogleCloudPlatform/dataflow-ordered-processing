@@ -16,6 +16,7 @@
 
 package com.google.cloud.orderbook;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -99,6 +100,13 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
     this.nextBucketTime = startTimeMillis;
     this.startTimeMillis = startTimeMillis;
     this.maxDurationSeconds = maxSeconds;
+
+    addAtShutdown(new Callable<List<OrderBookEvent>>() {
+      @Override
+      public List<OrderBookEvent> call() throws Exception {
+        return Arrays.asList(buildFinalOrderBookEvent().build());
+      }
+    });
   }
 
   public void add(long delay, Callable<List<OrderBookEvent>> work) {

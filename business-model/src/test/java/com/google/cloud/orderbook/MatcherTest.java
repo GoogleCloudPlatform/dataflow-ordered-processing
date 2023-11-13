@@ -20,6 +20,7 @@ import com.google.cloud.orderbook.model.OrderBookEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.GregorianCalendar;
+import java.util.HashMap;
 import java.util.List;
 import org.junit.Assert;
 import org.junit.Test;
@@ -52,6 +53,111 @@ public class MatcherTest {
         m.add(order),
         Arrays.asList(events)
     );
+  }
+
+  @Test
+  public void endTestMultiContract() {
+
+    // Must be a multiple of 10 for number of events and number of orders
+    int MAX_EVENTS = 20;
+
+    // MAX_EVENTS must be dividable by CONTRACTS
+    int CONTRACTS = 2;
+
+    // Calculated number of orders to send per contract
+    int NUM_ORDERS = MAX_EVENTS/CONTRACTS;
+
+    // Expected last sequence numbers
+    long LAST_CONTRACT_SEQ_ID = NUM_ORDERS+1;
+    long LAST_SEQ_ID = (NUM_ORDERS + 1) * CONTRACTS + 1;
+
+
+    // Create the matchers and context
+    MatcherContext context = new MatcherContext(10, startTime, MAX_EVENTS/10);
+    ArrayList<Matcher> matchers = new ArrayList<Matcher>();
+    for (int i = 0; i < CONTRACTS; i++) {
+      matchers.add(new Matcher(context, i));
+    }
+
+    // Add a bunch of orders to across all the contracts to execute.
+    for (int i = 0; i < NUM_ORDERS; i++) {
+      for (int j = 0; j < CONTRACTS; j++) {
+        final Matcher m = matchers.get(j);
+        context.add(i, () -> m.add(context.newOrder(OrderBookEvent.Side.BUY, 10, 10))); 
+      }
+    }
+
+    // Track contract IDs
+    HashMap<Long, Long> contractSeqId = new HashMap<Long, Long>();
+    int seqId = 0;
+    for (List<OrderBookEvent> obeList : context) {
+      for (OrderBookEvent obe : obeList) {
+
+        // Check sequence ID
+        seqId ++;
+        Assert.assertEquals("expected seqId", seqId, obe.getSeqId());
+        if (seqId < LAST_SEQ_ID) {
+          Assert.assertEquals("expected final message flag", false, obe.getLastMessage());
+        } else if (seqId == LAST_SEQ_ID) {
+          Assert.assertEquals("expected final message flag", true, obe.getLastMessage());
+        } else {
+          Assert.assertTrue("too many messages!", false);
+        }
+
+        // Check contract sequence ID (if non-zero)
+        if (obe.getContractSeqId() > 0) {
+          long nextContractSeqId = contractSeqId.compute(obe.getContractId(), (k, v) -> {
+            if (v == null) {
+              return 1L;
+            } else {
+              return v + 1;
+            }
+          });
+          Assert.assertEquals("expected contractSeqId", nextContractSeqId, obe.getContractSeqId());
+
+          if (nextContractSeqId < LAST_CONTRACT_SEQ_ID) {
+            Assert.assertEquals("expected final message flag", false, obe.getLastContractMessage());
+          } else if (nextContractSeqId == LAST_CONTRACT_SEQ_ID) {
+            Assert.assertEquals("expected final message flag", true, obe.getLastContractMessage());
+          } else {
+            Assert.assertTrue("too many messages!", false);
+          }
+        }
+      }
+    }
+  }
+
+  @Test
+  public void endTestSimple() {
+    int MAX_EVENTS = 10;
+    MatcherContext context = new MatcherContext(10, startTime, MAX_EVENTS/10);
+    Matcher m = new Matcher(context, 1);
+
+    // Add a bunch of orders to execute.
+    for (int i = 0; i < 10; i++) {
+      context.add(i, () -> m.add(context.newOrder(OrderBookEvent.Side.BUY, 100, 100))); 
+    }
+
+    int msgCount = 0;
+    for (List<OrderBookEvent> obeList : context) {
+      for (OrderBookEvent obe : obeList) {
+        msgCount ++;
+        if (msgCount < MAX_EVENTS+1) {
+          Assert.assertEquals("expected new orders", obe.getType(), OrderBookEvent.Type.NEW);
+          Assert.assertEquals("expected size of 1", msgCount, obe.getSeqId());
+          Assert.assertEquals("expected size of 1", msgCount, obe.getContractSeqId());
+        } else if (msgCount == MAX_EVENTS+1) {
+          Assert.assertEquals("expected final contract order", true, obe.getLastContractMessage());
+          Assert.assertEquals("expected final contract order", msgCount, obe.getContractSeqId());
+          Assert.assertEquals("expected final contract order", msgCount, obe.getSeqId());
+        } else if (msgCount == MAX_EVENTS+2) {
+          Assert.assertEquals("expected final order", true, obe.getLastMessage());
+          Assert.assertEquals("expected final contract order", msgCount, obe.getSeqId());
+        } else {
+          Assert.assertTrue("too many order events!", false);
+        }
+      }
+    }
   }
 
   @Test

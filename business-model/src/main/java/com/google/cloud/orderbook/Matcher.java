@@ -63,6 +63,8 @@ public class Matcher {
   public Matcher(MatcherContext context, long contractId) {
     this.context = context;
     this.contractId = contractId;
+
+    this.context.addAtShutdown(() -> this.shutdown());
   }
 
   final private TreeMap<OrderKey, Order> bidOrderList = new TreeMap<OrderKey, Order>(

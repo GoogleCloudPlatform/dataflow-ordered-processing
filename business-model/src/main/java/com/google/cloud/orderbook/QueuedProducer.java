@@ -89,45 +89,30 @@ class QueuedProducer<T> implements Iterator<List<T>> {
    * @param work  Callable for work at shutdown
    */
   void addAtShutdown(Callable<List<T>> work) {
-    atShutdownWork.add(work);
+    atShutdownWork.add(0, work);
   }
-
-
-  // ShutdownEvents indicate that we've shutdown and are the set of events to return.
-  // Once this ArrayList is empty, there's nothing more to do.
-  private ArrayList<T> shutdownEvents = null;
 
   /**
    * Shutdown work queue.
+   * 
+   * This should be called from the work itself.
+   * 
    * - Stop adding new work to the queue (even if asked)
-   * - Stop processing work in the queue
-   * - Execute the shutdown work
+   * - Finish processing the last bit of work in the queue
+   * - Execute the shutdown work and append to the return results
    * - Stop returning events from next() after that
    */
+  private boolean isActive = true;
   void shutdown() {
-
-    // If already shutdown, stop now.
-    if (shutdownEvents != null) {
-      return;
-    }
-
-    // Collect all of the final events
-    shutdownEvents = new ArrayList<T>();
-    for (Callable<List<T>> task : atShutdownWork) {
-      try {
-        shutdownEvents.addAll(task.call());
-      } catch (Exception e) {
-        System.out.println("Exception: " + e.toString());
-      }
-    }
+    isActive = false;
   }
 
   @Override
   public boolean hasNext() {
-    if (shutdownEvents != null) {
-      return !shutdownEvents.isEmpty();
-    }
-    return !que.isEmpty();
+    //if (shutdownEvents != null) {
+    //  return !shutdownEvents.isEmpty();
+    //}
+    return isActive && !que.isEmpty();
   }
 
   @Override
@@ -137,7 +122,7 @@ class QueuedProducer<T> implements Iterator<List<T>> {
     //
     // This should not happen, as a shutdown() should be called
     // within the work itself.
-    if (shutdownEvents != null) {
+    if (!isActive) {
       return Arrays.asList();
     }
 
@@ -161,15 +146,21 @@ class QueuedProducer<T> implements Iterator<List<T>> {
       return Arrays.asList();
     }
 
-    // If not shutdown, return teh results
-    if (shutdownEvents == null) {
+    // If not shutdown, return the results
+    if (isActive) {
       return results;
     }
 
-    // Return the shutdownEvents, and set the shutdownEvents to empty
-    // so we only return it once
-    List<T> returnEvents = shutdownEvents;
-    shutdownEvents = new ArrayList<T>();
+    // Calculate and merge the shutdown events after the current events
+    ArrayList<T> returnEvents = new ArrayList<T>();
+    returnEvents.addAll(results);
+    for (Callable<List<T>> task : atShutdownWork) {
+      try {
+        returnEvents.addAll(task.call());
+      } catch (Exception e) {
+        System.out.println("Exception: " + e.toString());
+      }
+    }
 
     return returnEvents;
   }
