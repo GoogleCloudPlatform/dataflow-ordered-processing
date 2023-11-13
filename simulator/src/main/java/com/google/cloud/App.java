@@ -161,22 +161,21 @@ public class App {
     if (eventsPerSecond > 0) {
       if (simTime) {
         context = new MatcherContext(eventsPerSecond, System.currentTimeMillis(), maxSeconds,
-            sessionId);
+            sessionId, limit);
       } else {
-        context = new MatcherContext(eventsPerSecond, maxSeconds, sessionId);
+        context = new MatcherContext(eventsPerSecond, maxSeconds, sessionId, limit);
       }
     } else {
       if (simTime) {
         System.out.println("Cannot specify simulated time with no rate!");
         System.exit(1);
       }
-      context = new MatcherContext(maxSeconds, sessionId);
+      context = new MatcherContext(maxSeconds, sessionId, limit);
     }
 
     OrderBookBuilder obb = new OrderBookBuilder();
 
-    Iterator<List<OrderBookEvent>> it = Simulator.getComplexSimulator(context, maxContracts, 100, limit,
-        seed);
+    Iterator<List<OrderBookEvent>> it = Simulator.getComplexSimulator(context, maxContracts, 100, seed);
     while (it.hasNext()) {
       for (OrderBookEvent orderBookEvent : it.next()) {
         eventConsumer.accept(orderBookEvent);

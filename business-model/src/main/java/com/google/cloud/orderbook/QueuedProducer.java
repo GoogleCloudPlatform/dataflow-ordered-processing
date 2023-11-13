@@ -67,6 +67,15 @@ class QueuedProducer<T> implements Iterator<List<T>> {
   final private PriorityQueue<QueuedItem<T>> que = new PriorityQueue<QueuedItem<T>>();
   private long lastTick = 0;
 
+  enum State {
+    /* Accepting new work, returning results of work like normal. */
+    ACTIVE,
+    /* Not accepting new work, finishing current lot of work. */
+    PENDING_SHUTDOWN,
+    /* Finished current lot of work and returned shutdown events. Nothing more to do. */
+    FINALISED
+  }
+  private State state = State.ACTIVE;
   /**
    * Add a bit of a work after a certain tick delay (relative to current tick),
    * with a bit of work.
@@ -75,6 +84,9 @@ class QueuedProducer<T> implements Iterator<List<T>> {
    * @param work  Callable for work
    */
   void add(long delay, Callable<List<T>> work) {
+    if (!state.equals(State.ACTIVE)) {
+      return;
+    }
     delay += lastTick;
     que.add(new QueuedItem<T>(delay, work));
   }
@@ -89,6 +101,9 @@ class QueuedProducer<T> implements Iterator<List<T>> {
    * @param work  Callable for work at shutdown
    */
   void addAtShutdown(Callable<List<T>> work) {
+    if (!state.equals(State.ACTIVE)) {
+      return;
+    }
     atShutdownWork.add(0, work);
   }
 
@@ -102,42 +117,54 @@ class QueuedProducer<T> implements Iterator<List<T>> {
    * - Execute the shutdown work and append to the return results
    * - Stop returning events from next() after that
    */
-  private boolean isActive = true;
   void shutdown() {
-    isActive = false;
+    if (!state.equals(State.ACTIVE)) {
+      return;
+    }
+    state = State.PENDING_SHUTDOWN;
   }
 
   @Override
   public boolean hasNext() {
-    //if (shutdownEvents != null) {
-    //  return !shutdownEvents.isEmpty();
-    //}
-    return isActive && !que.isEmpty();
+    // More work to do *or* we're not yet finalised and shutdown work
+    // to be done.
+    return !que.isEmpty() || !state.equals(State.FINALISED);
   }
 
   @Override
   public List<T> next() {
 
-    // If already shutdown, return empty list.
-    //
-    // This should not happen, as a shutdown() should be called
-    // within the work itself.
-    if (!isActive) {
+    // If finalised, nothing to return
+    if (state.equals(State.FINALISED)) {
       return Arrays.asList();
     }
 
     // Get next item to execute -- if nothing is there,
     // we need to stop and return null.
-    Callable<List<T>> workTask = null;
-    QueuedItem<T> t = this.que.poll();
-    if (t == null) {
-      return null;
+    QueuedItem<T> nextWork = this.que.poll();
+    if (nextWork == null) {
+
+      // Calculate the shutdown events and return them
+      // as there is no more normal work to do.
+      ArrayList<T> shutdownEvents = new ArrayList<T>();
+      for (Callable<List<T>> task : atShutdownWork) {
+        try {
+          shutdownEvents.addAll(task.call());
+        } catch (Exception e) {
+          System.out.println("Exception: " + e.toString());
+        }
+      }
+
+      // Now finalised - no more events ever!
+      state = State.FINALISED;
+
+      return shutdownEvents;
     }
-    workTask = t.work;
-    lastTick = t.tick;
 
     // Execute the work
     // On exception, return empty list to keep going.
+    Callable<List<T>> workTask = nextWork.work;
+    lastTick = nextWork.tick;
     List<T> results = null;
     try {
       results = workTask.call();
@@ -146,22 +173,7 @@ class QueuedProducer<T> implements Iterator<List<T>> {
       return Arrays.asList();
     }
 
-    // If not shutdown, return the results
-    if (isActive) {
-      return results;
-    }
+    return results;
 
-    // Calculate and merge the shutdown events after the current events
-    ArrayList<T> returnEvents = new ArrayList<T>();
-    returnEvents.addAll(results);
-    for (Callable<List<T>> task : atShutdownWork) {
-      try {
-        returnEvents.addAll(task.call());
-      } catch (Exception e) {
-        System.out.println("Exception: " + e.toString());
-      }
-    }
-
-    return returnEvents;
   }
 }

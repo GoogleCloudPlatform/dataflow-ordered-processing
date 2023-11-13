@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.Callable;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -74,7 +75,7 @@ public class MatcherTest {
 
     // Create the matchers and context
     String sessionId = "session-1";
-    MatcherContext context = new MatcherContext(10, startTime, MAX_EVENTS/10, sessionId);
+    MatcherContext context = new MatcherContext(10, startTime, MAX_EVENTS/10, sessionId, 0);
     ArrayList<Matcher> matchers = new ArrayList<Matcher>();
     for (int i = 0; i < CONTRACTS; i++) {
       matchers.add(new Matcher(context, i));
@@ -93,6 +94,8 @@ public class MatcherTest {
     int seqId = 0;
     for (List<OrderBookEvent> obeList : context) {
       for (OrderBookEvent obe : obeList) {
+
+        // System.out.println(String.format("Got: %s", obe.toString()));
 
         // Check sequence ID
         seqId ++;
@@ -128,11 +131,60 @@ public class MatcherTest {
     }
   }
 
+  // Utility to recursively call the same work in the same context -- this allows you to
+  // keep submitting orders and honour a shutdown request (no more work to be added)
+  static class ForeverWork implements Callable<List<OrderBookEvent>> {
+    final MatcherContext context;
+    final Callable<List<OrderBookEvent>> work;
+    ForeverWork(MatcherContext context, Callable<List<OrderBookEvent>> work) {
+      this.context = context;
+      this.work = work;
+    }
+    @Override
+    public List<OrderBookEvent> call() throws Exception {
+      context.add(0, this);
+      return this.work.call();
+    }
+  }
+
+  @Test
+  public void endTestSimpleByLimit() {
+    String sessionId = "session-1";
+    int MAX_EVENTS = 20;
+    MatcherContext context = new MatcherContext(10, startTime, 0, sessionId, MAX_EVENTS);
+    Matcher m = new Matcher(context, 1);
+
+    context.add(0, new ForeverWork(context, () -> {
+      return m.add(context.newOrder(OrderBookEvent.Side.BUY, 100, 100)); 
+    }));
+
+    int msgCount = 0;
+    for (List<OrderBookEvent> obeList : context) {
+      for (OrderBookEvent obe : obeList) {
+        msgCount ++;
+        if (msgCount <= MAX_EVENTS+1) {
+          Assert.assertEquals("expected new orders", obe.getType(), OrderBookEvent.Type.NEW);
+          Assert.assertEquals("expected size of 1", msgCount, obe.getSeqId());
+          Assert.assertEquals("expected size of 1", msgCount, obe.getContractSeqId());
+        } else if (msgCount == MAX_EVENTS+2) {
+          Assert.assertEquals("expected final contract order", true, obe.getLastContractMessage());
+          Assert.assertEquals("expected final contract order", msgCount, obe.getContractSeqId());
+          Assert.assertEquals("expected final contract order", msgCount, obe.getSeqId());
+        } else if (msgCount == MAX_EVENTS+3) {
+          Assert.assertEquals("expected final order", true, obe.getLastMessage());
+          Assert.assertEquals("expected final contract order", msgCount, obe.getSeqId());
+        } else {
+          Assert.assertTrue("too many order events!", false);
+        }
+      }
+    }
+  }
+
   @Test
   public void endTestSimple() {
     String sessionId = "session-1";
     int MAX_EVENTS = 10;
-    MatcherContext context = new MatcherContext(10, startTime, MAX_EVENTS/10, sessionId);
+    MatcherContext context = new MatcherContext(10, startTime, MAX_EVENTS/10, sessionId, 0);
     Matcher m = new Matcher(context, 1);
 
     // Add a bunch of orders to execute.
@@ -165,7 +217,7 @@ public class MatcherTest {
   @Test
   public void matchTest() {
     String sessionId = "session-1";
-    MatcherContext context = new MatcherContext(10, startTime, 0, sessionId);
+    MatcherContext context = new MatcherContext(10, startTime, 0, sessionId, 0);
     Matcher m = new Matcher(context, 1);
 
     expectMatches(m.add(context.newOrder(OrderBookEvent.Side.SELL, 100, 100)), Arrays.asList(),
@@ -191,7 +243,7 @@ public class MatcherTest {
   @Test
   public void simpleTest() {
     String sessionId = "session-1";
-    MatcherContext context = new MatcherContext(1000, startTime, 0, sessionId);
+    MatcherContext context = new MatcherContext(1000, startTime, 0, sessionId, 0);
     Matcher m = new Matcher(context, 1);
 
     // Add new sell order of q:100, p:100

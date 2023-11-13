@@ -47,7 +47,7 @@ public class OrderBookBuilderTest {
   public void simpleTest() {
     String sessionId = "session-1";
     OrderBookBuilder builder = new OrderBookBuilder();
-    MatcherContext context = new MatcherContext(1000, startTime, 0, sessionId);
+    MatcherContext context = new MatcherContext(1000, startTime, 0, sessionId, 0);
     Matcher m = new Matcher(context, 1);
 
     // Add a series of orders.

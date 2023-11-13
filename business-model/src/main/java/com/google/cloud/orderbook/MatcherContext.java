@@ -60,9 +60,15 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
 
   // Maximum duration (optional)
   final private long maxDurationSeconds;
+  
+  // Maximum number of events produced (optional)
+  // Note this isn't strict -- once maxEvents is reached, shutdown will be initiated.
+  // This means that slightly more events may be produced than maxEvents.
+  final private long maxEvents;
 
   // Current throttling status
   private long eventsInBucket = 0;
+  private long totalEvents = 0;
   private long nextBucketTime;
 
   /*
@@ -73,9 +79,9 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
    *
    * Recommended for PubSub or Dataflow usage when you want to stream things as fast as you can.
    */
-  public MatcherContext(long maxSeconds, String sessionId) {
+  public MatcherContext(long maxSeconds, String sessionId, long maxEvents) {
     this(TimeThrottleMode.UNTHROTTLED_EVENTS_SYSTEM_TIME, 0, System.currentTimeMillis(), maxSeconds,
-        sessionId);
+        sessionId, maxEvents);
   }
 
   /*
@@ -85,9 +91,9 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
    * Recommended for batch data generation (Dataflow) or testing purposes.
    */
   public MatcherContext(long eventsPerSecond, long startTimeMillis, long maxSeconds,
-      String sessionId) {
+      String sessionId, long maxEvents) {
     this(TimeThrottleMode.UNTHROTTLED_EVENTS_THROTTLED_SIMULATED_TIME, eventsPerSecond,
-        startTimeMillis, maxSeconds, sessionId);
+        startTimeMillis, maxSeconds, sessionId, maxEvents);
   }
 
   /*
@@ -95,18 +101,19 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
    *
    * Recommended for general PubSub or Dataflow usage.
    */
-  public MatcherContext(long eventsPerSecond, long maxSeconds, String sessionId) {
+  public MatcherContext(long eventsPerSecond, long maxSeconds, String sessionId, long maxEvents) {
     this(TimeThrottleMode.THROTTLED_SYSTEM_TIME, eventsPerSecond, System.currentTimeMillis(),
-        maxSeconds, sessionId);
+        maxSeconds, sessionId, maxEvents);
   }
 
   private MatcherContext(TimeThrottleMode mode, long eventsPerSecond, long startTimeMillis,
-      long maxSeconds, String sessionId) {
+      long maxSeconds, String sessionId, long maxEvents) {
     this.mode = mode;
     this.eventsPerBucket = eventsPerSecond / (1000 / MILLISECOND_BUCKET_SIZE);
     this.nextBucketTime = startTimeMillis;
     this.startTimeMillis = startTimeMillis;
     this.maxDurationSeconds = maxSeconds;
+    this.maxEvents = maxEvents;
 
     addAtShutdown(new Callable<List<OrderBookEvent>>() {
       @Override
@@ -139,8 +146,9 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
     // Now we need to calculate the synthetic time (bucketing)
     //
 
-    // Count events in the bucket
+    // Count events in the bucket and total events
     eventsInBucket ++;
+    totalEvents ++;
 
     // If bucket is full, need to delay and/or shift bucket
     if (eventsInBucket == eventsPerBucket) {
@@ -168,9 +176,14 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
       eventTimeMillis = System.currentTimeMillis();
     }
 
-    // Check if we need to shutdown the queue
+    // Check if we need to shutdown the queue due to time
     if ((maxDurationSeconds > 0) &&
         (eventTimeMillis - startTimeMillis)/1000 >= maxDurationSeconds) {
+      this.que.shutdown();
+    }
+
+    // Or shutdown due to max events
+    if (maxEvents > 0 && totalEvents >= maxEvents) {
       this.que.shutdown();
     }
 

@@ -32,33 +32,9 @@ import java.util.concurrent.Callable;
 public class Simulator {
 
   /**
-   * Create a simple simulator for one contract
-   *
-   * @param midprice   Starting midprice (long, e.g., 100)
-   * @param genOrders  How many orders to generate and cancel in the simulator (0 = unlimited)
-   * @param seed       Random seed (0 = default randomization).
-   *                   This allows for deterministic behaviour if needed.
-   *
-   * @return Iterable<OrderBookEvent> -- produce OrderBookEvents from the simulator
-   */
-//  static public Iterator<List<OrderBookEvent>> getSimpleSimulator(MatcherContext context, int midprice, long genOrders, long seed) {
-//    new Simulator(context, sessionId, 1, 100, genOrders, seed);
-//
-//    context.addAtShutdown(new Callable<List<OrderBookEvent>>() {
-//      @Override
-//      public List<OrderBookEvent> call() throws Exception {
-//        return Arrays.asList(context.buildFinalOrderBookEvent().build());
-//      }
-//    });
-//
-//    return context.iterator();
-//  }
-
-  /**
    * Create a complex (multiple contract) simulator.
    *
    * @param midPrice  Starting mid price for all contracts
-   * @param genOrders How many orders to generate in total (0 = unlimited)
    * @param seed      Random seed (0 = default randomization)
    * @return Iterable<OrderbookEvent> -- produce OrderBookEvents from the simulator
    */
@@ -66,15 +42,12 @@ public class Simulator {
       MatcherContext context,
       long numContracts,
       long midPrice,
-      long genOrders,
       long seed) {
 
     // Start all of the simulators
     for (long i = 1; i <= numContracts; i++) {
-      new Simulator(context, i, midPrice, genOrders, seed);
+      new Simulator(context, i, midPrice, seed);
     }
-
-    context.addAtShutdown(() -> Arrays.asList(context.buildFinalOrderBookEvent().build()));
 
     return context.iterator();
   }
@@ -98,12 +71,10 @@ public class Simulator {
 
   private long anchorMidprice;
   private long midprice;
-  private long genOrders;
 
-  private Simulator(MatcherContext context, long contractId, long midprice, long genOrders, long seed) {
+  private Simulator(MatcherContext context, long contractId, long midprice, long seed) {
     this.anchorMidprice = midprice;
     this.midprice = midprice;
-    this.genOrders = genOrders;
     this.m = new Matcher(context, contractId);
     if (seed != 0) {
       this.r = new Random(seed);
@@ -169,16 +140,12 @@ public class Simulator {
     // Determine the Order
     final Order o = context.newOrder(side, price, qty);
     
-    // Decrement the generated orders
-    this.genOrders -= 1;
-    if (this.genOrders != 0) {
-      context.add(1, new Callable<List<OrderBookEvent>>() {
-        @Override
-        public List<OrderBookEvent> call() throws Exception {
-          return generateOrder();
-        }
-      });
-    }
+    context.add(1, new Callable<List<OrderBookEvent>>() {
+      @Override
+      public List<OrderBookEvent> call() throws Exception {
+        return generateOrder();
+      }
+    });
 
     // Remove the order in the future
     context.add(50, new Callable<List<OrderBookEvent>>() {
