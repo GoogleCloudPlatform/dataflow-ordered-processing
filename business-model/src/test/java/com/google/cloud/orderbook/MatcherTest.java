@@ -73,7 +73,8 @@ public class MatcherTest {
 
 
     // Create the matchers and context
-    MatcherContext context = new MatcherContext(10, startTime, MAX_EVENTS/10);
+    String sessionId = "session-1";
+    MatcherContext context = new MatcherContext(10, startTime, MAX_EVENTS/10, sessionId);
     ArrayList<Matcher> matchers = new ArrayList<Matcher>();
     for (int i = 0; i < CONTRACTS; i++) {
       matchers.add(new Matcher(context, i));
@@ -129,8 +130,9 @@ public class MatcherTest {
 
   @Test
   public void endTestSimple() {
+    String sessionId = "session-1";
     int MAX_EVENTS = 10;
-    MatcherContext context = new MatcherContext(10, startTime, MAX_EVENTS/10);
+    MatcherContext context = new MatcherContext(10, startTime, MAX_EVENTS/10, sessionId);
     Matcher m = new Matcher(context, 1);
 
     // Add a bunch of orders to execute.
