@@ -9,7 +9,6 @@ message OrderBookEvent {
   int64 timestampMS = 1;  // Millisecond timestamp
   string sessionId = 17;
   int64 contractId = 2;   // Contract ID (unique ordering)
-  int64 messageId = 3;    // Message ID
 
   // Global and per-contract sequence ID.
   //
