@@ -25,11 +25,6 @@ schema = <<EOF
   },
   {
     "mode": "REQUIRED",
-    "name": "message_id",
-    "type": "STRING"
-  },
-  {
-    "mode": "REQUIRED",
     "name": "contract_sequence_id",
     "type": "STRING"
   },
@@ -196,11 +191,6 @@ resource "google_bigquery_table" "order_event" {
     "mode": "REQUIRED",
     "name": "event_ts",
     "type": "TIMESTAMP"
-  },
-  {
-    "mode": "REQUIRED",
-    "name": "message_id",
-    "type": "STRING"
   },
   {
     "mode": "REQUIRED",
