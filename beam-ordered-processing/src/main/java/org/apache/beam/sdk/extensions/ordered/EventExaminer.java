@@ -17,9 +17,9 @@
 package org.apache.beam.sdk.extensions.ordered;
 
 import java.io.Serializable;
-import org.apache.beam.sdk.values.KV;
 
 public interface EventExaminer<Event> extends Serializable {
+
   boolean isInitialEvent(long sequenceNumber, Event event);
 
   boolean isLastEvent(long sequenceNumber, Event event);

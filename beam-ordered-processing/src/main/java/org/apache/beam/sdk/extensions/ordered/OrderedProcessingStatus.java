@@ -66,6 +66,7 @@ public abstract class OrderedProcessingStatus {
   public abstract Long getLatestBufferedSequence();
 
   public abstract long getNumberOfReceivedEvents();
+
   public abstract long getDuplicateCount();
 
   public abstract boolean isLastEventReceived();

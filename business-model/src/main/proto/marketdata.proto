@@ -1,4 +1,4 @@
-
+// Copyright 2023 Google Inc. All Rights Reserved.
 syntax = "proto3";
 
 option java_multiple_files = true;

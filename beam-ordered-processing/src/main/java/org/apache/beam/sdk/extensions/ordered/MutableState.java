@@ -22,19 +22,21 @@ import java.io.Serializable;
  */
 public interface MutableState<Event, Result> extends Serializable {
 
-    /**
-     * The interface assumes that events will mutate the state without the possibility of throwing an error.
-     * TODO: this might be too simplistic and a mechanism for failure of applying the event to a state
-     * would need to be created.
-     *
-     * @param mutation
-     * @return
-     */
-    void mutate(Event mutation);
+  /**
+   * The interface assumes that events will mutate the state without the possibility of throwing an
+   * error.
+   * TODO: this might be too simplistic and a mechanism for failure of applying the event to a state
+   * would need to be created.
+   *
+   * @param mutation
+   * @return
+   */
+  void mutate(Event mutation);
 
-    /**
-     * Will be called after each state mutation. Can return null if the result is not yet ready.
-     * @return
-     */
-    Result produceResult();
+  /**
+   * Will be called after each state mutation. Can return null if the result is not yet ready.
+   *
+   * @return
+   */
+  Result produceResult();
 }
