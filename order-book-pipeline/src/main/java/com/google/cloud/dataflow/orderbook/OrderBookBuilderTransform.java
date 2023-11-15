@@ -69,8 +69,7 @@ public class OrderBookBuilderTransform extends
                 eventCoder,
                 stateCoder,
                 keyCoder, marketDepthCoder)
-            .withInitialSequence(0L)
-            .withMaxResultsPerOutput(50000);
+            .withMaxResultsPerOutput(1000);
     if (produceStatusUpdatesOnEveryEvent) {
       orderedProcessor = orderedProcessor.produceStatusUpdatesOnEveryEvent(true);
     }

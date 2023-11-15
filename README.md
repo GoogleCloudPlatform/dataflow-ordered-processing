@@ -91,13 +91,18 @@ and save the output.
 
 #### See the status of processing per each contract
 
-Use the following query to compare latency of ingestion of the baseline pipeline and the main
-pipeline:
+This query shows processing status per contract for the latest session:
 
 ```sql
-SELECT
-    *
-FROM `ordered_processing_demo.processing_status` QUALIFY RANK() OVER (PARTITION BY session_id, contract_id ORDER BY status_ts DESC, received_count DESC) <= 5
+SELECT *
+FROM `ordered_processing_demo.processing_status`
+WHERE session_id = (SELECT DISTINCT session_id
+                    FROM `ordered_processing_demo.processing_status`
+                    ORDER BY session_id DESC
+    LIMIT 1)
+    QUALIFY RANK() OVER (PARTITION BY session_id
+    , contract_id
+ORDER BY status_ts DESC, received_count DESC) <= 5
 ORDER BY
     session_id,
     contract_id,
@@ -126,11 +131,20 @@ ORDER BY
 terraform -chdir terraform destroy 
 ```
 
+## Limitations
+
+### Duplicate detections
+
+Currently, the processor will discard the events which have the order number lower than the
+currently
+processed order number. If the new event needs to be buffered the duplicate numbers won't be checked
+and the processing results are unpredictable.
+
+The number of detected duplicates will be reported in the emitted processing statuses.
+
 ## Addtional Improvements
 
 ### Store only required elements in buffered objects
-
-### Create dedicated key class for the session security
 
 ## Contributing
 

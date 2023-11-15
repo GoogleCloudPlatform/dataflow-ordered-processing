@@ -39,9 +39,10 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>11</maven.compiler.source>
     <maven.compiler.target>11</maven.compiler.target>
-    <beam.version>2.51.0</beam.version>
+    <!--    TODO: remove once 2.52 is released-->
+    <beam.version>2.52.0-SNAPSHOT</beam.version>
     <autovalue.version>1.10.4</autovalue.version>
-<!--    TODO: convert tests to JUnit 5 -->
+    <!--    TODO: convert tests to JUnit 5 -->
     <junit.version>4.13.2</junit.version>
     <slf4j.version>1.7.30</slf4j.version>
   </properties>

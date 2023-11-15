@@ -158,7 +158,7 @@ class ProcessingState<KeyT> {
 
   /**
    * A set of records was pulled from the buffer, but it turned out that the element is not
-   * sequential. Record this newest sequence number - it will prevent unnecessary batch retrieval.
+   * sequential.
    *
    * @param newEarliestSequence
    */
@@ -207,6 +207,11 @@ class ProcessingState<KeyT> {
       duplicates++;
     }
     return result;
+  }
+
+  public boolean readyToProcessBufferedEvents() {
+    return earliestBufferedSequence != null && lastOutputSequence != null &&
+        earliestBufferedSequence == lastOutputSequence + 1;
   }
 
   /**

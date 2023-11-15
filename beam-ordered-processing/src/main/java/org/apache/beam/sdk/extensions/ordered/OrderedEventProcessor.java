@@ -70,7 +70,6 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
     PTransform<PCollection<KV<KeyT, KV<Long, EventT>>>, OrderedEventProcessorResult<KeyT, ResultT>> {
 
   public static final int DEFAULT_STATUS_UPDATE_FREQUENCY_SECONDS = 5;
-  public static final int DEFAULT_INITIAL_SEQUENCE_NUMBER = 1;
   public static final boolean DEFAULT_PRODUCE_DIAGNOSTIC_EVENTS = false;
   private static final boolean DEFAULT_PRODUCE_STATUS_UPDATE_ON_EVERY_EVENT = false;
   public static final int DEFAULT_MAX_ELEMENTS_TO_OUTPUT = 10_000;
@@ -93,7 +92,7 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
       Coder<StateType> stateCoder, Coder<KeyType> keyTypeCoder, Coder<ResultType> resultTypeCoder) {
     // TODO: none of the values are marked as @Nullable and the transform will fail if nulls are provided. But need a better error messaging.
     return new AutoValue_OrderedEventProcessor<>(initialStateCreator, eventExaminer, eventCoder,
-        stateCoder, keyTypeCoder, resultTypeCoder, DEFAULT_INITIAL_SEQUENCE_NUMBER,
+        stateCoder, keyTypeCoder, resultTypeCoder,
         DEFAULT_STATUS_UPDATE_FREQUENCY_SECONDS, DEFAULT_PRODUCE_STATUS_UPDATE_ON_EVERY_EVENT,
         DEFAULT_PRODUCE_DIAGNOSTIC_EVENTS, DEFAULT_MAX_ELEMENTS_TO_OUTPUT);
   }
@@ -110,24 +109,7 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
       int seconds) {
     return new AutoValue_OrderedEventProcessor<>(this.getInitialStateCreator(),
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
-        this.getResultCoder(), this.getInitialSequenceNumber(), seconds,
-        this.isProduceStatusUpdateOnEveryEvent(), this.isProduceDiagnosticEvents(),
-        this.getMaxNumberOfResultsPerOutput());
-  }
-
-
-  /**
-   * Provide a custom initial sequence number to start with
-   *
-   * @param initialSequence
-   * @return
-   */
-
-  public OrderedEventProcessor<EventT, KeyT, ResultT, StateT> withInitialSequence(
-      long initialSequence) {
-    return new AutoValue_OrderedEventProcessor<>(this.getInitialStateCreator(),
-        this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
-        this.getResultCoder(), initialSequence, this.getStatusUpdateFrequencySeconds(),
+        this.getResultCoder(), seconds,
         this.isProduceStatusUpdateOnEveryEvent(), this.isProduceDiagnosticEvents(),
         this.getMaxNumberOfResultsPerOutput());
   }
@@ -136,7 +118,7 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
       boolean produceDiagnosticEvents) {
     return new AutoValue_OrderedEventProcessor<>(this.getInitialStateCreator(),
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
-        this.getResultCoder(), this.getInitialSequenceNumber(),
+        this.getResultCoder(),
         this.getStatusUpdateFrequencySeconds(), this.isProduceStatusUpdateOnEveryEvent(),
         produceDiagnosticEvents, this.getMaxNumberOfResultsPerOutput());
   }
@@ -152,7 +134,7 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
       boolean produceDiagnosticEvents) {
     return new AutoValue_OrderedEventProcessor<>(this.getInitialStateCreator(),
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
-        this.getResultCoder(), this.getInitialSequenceNumber(),
+        this.getResultCoder(),
         this.getStatusUpdateFrequencySeconds(), true, this.isProduceDiagnosticEvents(),
         this.getMaxNumberOfResultsPerOutput());
   }
@@ -161,7 +143,7 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
       int maxResultsPerOutput) {
     return new AutoValue_OrderedEventProcessor<>(this.getInitialStateCreator(),
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
-        this.getResultCoder(), this.getInitialSequenceNumber(),
+        this.getResultCoder(),
         this.getStatusUpdateFrequencySeconds(), this.isProduceStatusUpdateOnEveryEvent(),
         this.isProduceDiagnosticEvents(), maxResultsPerOutput);
   }
@@ -177,8 +159,6 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
   abstract Coder<KeyT> getKeyCoder();
 
   abstract Coder<ResultT> getResultCoder();
-
-  abstract long getInitialSequenceNumber();
 
   abstract int getStatusUpdateFrequencySeconds();
 
@@ -202,7 +182,7 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
     PCollectionTuple processingResult = input.apply(ParDo.of(
         new OrderedProcessorDoFn<>(getInitialStateCreator(), getEventExaminer(), getEventCoder(),
             getStateCoder(),
-            getKeyCoder(), getInitialSequenceNumber(), statusOutput,
+            getKeyCoder(), statusOutput,
             getStatusUpdateFrequencySeconds() <= 0 ? null
                 : Duration.standardSeconds(getStatusUpdateFrequencySeconds()), diagnosticOutput,
             isProduceDiagnosticEvents(), isProduceStatusUpdateOnEveryEvent(),
@@ -296,8 +276,6 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
     @SuppressWarnings("unused")
     private final TimerSpec largeBatchEmissionTimer = TimerSpecs.timer(TimeDomain.EVENT_TIME);
 
-    private final long initialSequenceValue;
-
     private final TupleTag<KV<Key, OrderedProcessingStatus>> statusTupleTag;
     private final Duration statusUpdateFrequency;
 
@@ -314,7 +292,6 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
      * @param eventCoder
      * @param stateCoder
      * @param keyCoder
-     * @param initialSequenceValue
      * @param statusTupleTag
      * @param statusUpdateFrequency
      * @param diagnosticEventsTupleTag
@@ -324,7 +301,7 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
      */
     OrderedProcessorDoFn(ProcessFunction<Event, State> initialStateCreator,
         EventExaminer<Event> eventExaminer, Coder<Event> eventCoder,
-        Coder<State> stateCoder, Coder<Key> keyCoder, long initialSequenceValue,
+        Coder<State> stateCoder, Coder<Key> keyCoder,
         TupleTag<KV<Key, OrderedProcessingStatus>> statusTupleTag, Duration statusUpdateFrequency,
         TupleTag<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticEventsTupleTag,
         boolean produceDiagnosticEvents, boolean produceStatusUpdateOnEveryEvent,
@@ -335,7 +312,6 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
       this.mutableStateSpec = StateSpecs.value(stateCoder);
       this.processingStateSpec = StateSpecs.value(ProcessingStateCoder.of(keyCoder));
       this.windowClosedSpec = StateSpecs.value(BooleanCoder.of());
-      this.initialSequenceValue = initialSequenceValue;
       this.statusTupleTag = statusTupleTag;
       this.statusUpdateFrequency = statusUpdateFrequency;
       this.diagnosticEventsTupleTag = diagnosticEventsTupleTag;
@@ -382,7 +358,9 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
 
       State state = processNewEvent(sequence, event, processingState, mutableStateState,
           bufferedEventsState, resultOutputter, diagnostics);
-      processBufferedEvents(processingState, state, bufferedEventsState, resultOutputter,
+      int numberOfRecordsOutput = 0;
+      processBufferedEvents(processingState, numberOfRecordsOutput, state, bufferedEventsState,
+          resultOutputter,
           largeBatchEmissionTimer, diagnostics);
 
       saveStatesAndOutputDiagnostics(processingStateState, processingState, mutableStateState,
@@ -500,13 +478,15 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
      * Process buffered events
      *
      * @param processingStatus
+     * @param numberOfResultsProduced
      * @param state
      * @param bufferedEventsState
      * @param resultReceiver
      * @param largeBatchEmissionTimer
      * @param diagnostics
      */
-    private void processBufferedEvents(ProcessingState<Key> processingStatus, State state,
+    private void processBufferedEvents(ProcessingState<Key> processingStatus,
+        int numberOfResultsProduced, State state,
         OrderedListState<Event> bufferedEventsState, OutputReceiver<KV<Key, Result>> resultReceiver,
         Timer largeBatchEmissionTimer, Builder diagnostics) {
       if (state == null) {
@@ -514,81 +494,61 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
         // method should we attempt to process buffered events
         return;
       }
-      if (processingStatus.getBufferedRecordCount() == 0) {
-        // Nothing is buffered
+
+      if (!processingStatus.readyToProcessBufferedEvents()) {
         return;
       }
-
-      // If we know upfront that the earliest record won't be sequential - break out right away
-      if (processingStatus.getEarliestBufferedSequence()
-          > processingStatus.getLastOutputSequence() + 1) {
-        return;
-      }
-
-      Instant endClearRange = null;
 
       int recordCount = 0;
       Instant firstEventRead = null;
 
-      Instant startRange;
-      Instant endRange;
-      while (true) {
-        startRange = Instant.ofEpochMilli(processingStatus.getEarliestBufferedSequence());
-        // TODO: checks against lastBufferedSequence reaching Long.MAX_VALUE
-        long lastSequenceToRead = calculateLastSequenceToRead(processingStatus,
-            maxNumberOfResultsToProduce);
-        endRange = Instant.ofEpochMilli(lastSequenceToRead);
+      Instant startRange = Instant.ofEpochMilli(processingStatus.getEarliestBufferedSequence());
+      // TODO: checks against lastBufferedSequence reaching Long.MAX_VALUE
+      Instant endRange = Instant.ofEpochMilli(processingStatus.getLatestBufferedSequence() + 1);
+      Instant endClearRange = null;
 
-        Iterable<TimestampedValue<Event>> events = bufferedEventsState.readRange(startRange,
-            endRange);
+      // readRange is efficiently implemented and will bring records in batches
+      Iterable<TimestampedValue<Event>> events = bufferedEventsState.readRange(startRange,
+          endRange);
 
-        // TODO: Draining events is a temporary workaround issues related to https://github.com/apache/beam/issues/28370
-        // It can be removed once https://github.com/apache/beam/pull/28371 is available in a regular release, ETA 2.51.0
-        boolean drainEvents = false;
-        int numberOfResultsProduced = 0;
-        for (TimestampedValue<Event> timestampedEvent : events) {
-          if (drainEvents) {
-            continue;
-          }
-          Instant eventTimestamp = timestampedEvent.getTimestamp();
-          if (recordCount++ == 0) {
-            firstEventRead = eventTimestamp;
-          }
-          long eventSequence = eventTimestamp.getMillis();
+      // TODO: Draining events is a temporary workaround related to https://github.com/apache/beam/issues/28370
+      // It can be removed once https://github.com/apache/beam/pull/28371 is available in a regular release, ETA 2.51.0
+      boolean drainEvents = false;
+      for (TimestampedValue<Event> timestampedEvent : events) {
+        if (drainEvents) {
+          continue;
+        }
+        Instant eventTimestamp = timestampedEvent.getTimestamp();
+        if (recordCount++ == 0) {
+          firstEventRead = eventTimestamp;
+        }
+        long eventSequence = eventTimestamp.getMillis();
 
-          if (eventSequence > processingStatus.getLastOutputSequence() + 1) {
-            processingStatus.foundSequenceGap(eventSequence);
-            // Records will be cleared up to this element
-            endClearRange = Instant.ofEpochMilli(eventSequence);
-            drainEvents = true;
-            continue;
+        if (eventSequence > processingStatus.getLastOutputSequence() + 1) {
+          processingStatus.foundSequenceGap(eventSequence);
+          // Records will be cleared up to this element
+          endClearRange = Instant.ofEpochMilli(eventSequence);
+          drainEvents = true;
+          continue;
 //          break;
-          }
-
-          state.mutate(timestampedEvent.getValue());
-          Result result = state.produceResult();
-          if (result != null) {
-            resultReceiver.output(KV.of(processingStatus.getKey(), result));
-            ++numberOfResultsProduced;
-          }
-          processingStatus.processedBufferedEvent(eventSequence);
-          // Remove this record also
-          endClearRange = Instant.ofEpochMilli(eventSequence + 1);
-
-          if (numberOfResultsProduced >= maxNumberOfResultsToProduce) {
-//          Instant timeForNextRun = Instant.now().plus(Duration.standardSeconds(1));
-            LOG.info("Setting the timer to output next batch of events for key '"
-                + processingStatus.getKey() + "'");
-            largeBatchEmissionTimer.offset(Duration.millis(1)).setRelative();
-            drainEvents = true;
-          }
         }
-        if (recordCount > 0) {
-          break;
+
+        state.mutate(timestampedEvent.getValue());
+        Result result = state.produceResult();
+        if (result != null) {
+          resultReceiver.output(KV.of(processingStatus.getKey(), result));
+          ++numberOfResultsProduced;
         }
-        // Nothing was read from the range - meaning that there was a sequence gap larger than
-        // the max number of records to produce
-        processingStatus.foundSequenceGap(lastSequenceToRead);
+        processingStatus.processedBufferedEvent(eventSequence);
+        // Remove this record also
+        endClearRange = Instant.ofEpochMilli(eventSequence + 1);
+
+        if (numberOfResultsProduced >= maxNumberOfResultsToProduce) {
+          LOG.info("Setting the timer to output next batch of events for key '"
+              + processingStatus.getKey() + "'");
+          largeBatchEmissionTimer.offset(Duration.millis(1)).setRelative();
+          drainEvents = true;
+        }
       }
 
       // Temporarily disabled due to https://github.com/apache/beam/pull/28171
@@ -598,16 +558,6 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
       diagnostics.setQueriedBufferedEvents(
           QueriedBufferedEvents.create(startRange, endRange, firstEventRead));
       diagnostics.setClearedBufferedEvents(ClearedBufferedEvents.create(startRange, endClearRange));
-    }
-
-    private long calculateLastSequenceToRead(ProcessingState<Key> processingStatus,
-        long maxNumberOfResultsToProduce) {
-      long result = processingStatus.getLatestBufferedSequence() + 1;
-
-      //--- Buffered results can have gaps in sequences, but the processing will stop on a gap anyway
-      return Math.min(processingStatus.getEarliestBufferedSequence() +
-          // This logic will prevent numeric overflow at the very end of the Long's range
-          Math.min(maxNumberOfResultsToProduce, processingStatus.getBufferedRecordCount()), result);
     }
 
     @OnTimer(LARGE_BATCH_EMISSION_TIMER)
@@ -633,7 +583,9 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
       OrderedProcessingDiagnosticEvent.Builder diagnostics = OrderedProcessingDiagnosticEvent.builder();
       diagnostics.setProcessingTime(Instant.now());
 
-      processBufferedEvents(processingStatus, state, bufferedEventsState, resultReceiver,
+      int numberOfResultsProduced = 0;
+      processBufferedEvents(processingStatus, numberOfResultsProduced, state, bufferedEventsState,
+          resultReceiver,
           largeBatchEmissionTimer, diagnostics);
 
       saveStatesAndOutputDiagnostics(processingStatusState, processingStatus, currentStateState,

@@ -96,8 +96,6 @@
   </dependencies>
 
   <properties>
-<!--    TODO: remove once 2.52 is released-->
-    <beam.version>2.52.0-SNAPSHOT</beam.version>
     <maven.compiler.source>11</maven.compiler.source>
     <maven.compiler.target>11</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
