@@ -33,7 +33,6 @@ public class MarketDepthToTableRowConverter implements
     TableRow result = new TableRow();
     result.set("session_id", input.getKey().getSessionId());
     result.set("contract_id", input.getKey().getContractId());
-    result.set("message_id", marketDepth.getMessageId());
     result.set("contract_sequence_id", marketDepth.getContractSeqId());
     result.set("bid_count", marketDepth.getBidsCount());
     result.set("offer_count", marketDepth.getOffersCount());

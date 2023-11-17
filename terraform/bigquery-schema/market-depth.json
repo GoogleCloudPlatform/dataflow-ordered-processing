@@ -1,0 +1,84 @@
+[
+  {
+    "mode": "REQUIRED",
+    "name": "session_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "contract_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "contract_sequence_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "bid_count",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "offer_count",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "last_trade",
+    "type": "RECORD",
+    "fields": [
+      {
+        "name": "price",
+        "type": "INTEGER",
+        "mode": "REQUIRED"
+      },
+      {
+        "name": "quantity",
+        "type": "INTEGER",
+        "mode": "REQUIRED"
+      }
+    ]
+  },
+  {
+    "mode": "REPEATED",
+    "name": "bids",
+    "type": "RECORD",
+    "fields": [
+      {
+        "name": "price",
+        "type": "INTEGER",
+        "mode": "REQUIRED"
+      },
+      {
+        "name": "quantity",
+        "type": "INTEGER",
+        "mode": "REQUIRED"
+      }
+    ]
+  },
+  {
+    "mode": "REPEATED",
+    "name": "offers",
+    "type": "RECORD",
+    "fields": [
+      {
+        "name": "price",
+        "type": "INTEGER",
+        "mode": "REQUIRED"
+      },
+      {
+        "name": "quantity",
+        "type": "INTEGER",
+        "mode": "REQUIRED"
+      }
+    ]
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "ingest_ts",
+    "type": "TIMESTAMP",
+    "defaultValueExpression": "CURRENT_TIMESTAMP()"
+  }
+]

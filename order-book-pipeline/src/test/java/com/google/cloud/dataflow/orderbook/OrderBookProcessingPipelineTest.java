@@ -116,7 +116,8 @@ public class OrderBookProcessingPipelineTest {
               orderBookBuilder.getCurrentMarketDepth(depth, withTrade)));
 
       expectedProcessingStatuses.add(KV.of(SessionContractKey.create("", event.getContractId()),
-          OrderedProcessingStatus.create(elementCount, 0, null, null, elementCount, 0, false)));
+          OrderedProcessingStatus.create(elementCount, 0, null, null, elementCount, elementCount, 0,
+              false)));
     }
 
     testStreamingProcessing(depth, withTrade, inputEvents, expectedOutput,
@@ -162,15 +163,15 @@ public class OrderBookProcessingPipelineTest {
     ++elementCount;
     SessionContractKey key = SessionContractKey.create("", contractId);
     expectedProcessingStatuses.add(
-        KV.of(key, OrderedProcessingStatus.create(null, 1, 3L, 3L, elementCount, 0, false)));
+        KV.of(key, OrderedProcessingStatus.create(null, 1, 3L, 3L, elementCount, 0l, 0, false)));
 
     ++elementCount;
     expectedProcessingStatuses.add(
-        KV.of(key, OrderedProcessingStatus.create(null, 2, 2L, 3L, elementCount, 0, false)));
+        KV.of(key, OrderedProcessingStatus.create(null, 2, 2L, 3L, elementCount, 0L, 0, false)));
 
     ++elementCount;
     expectedProcessingStatuses.add(
-        KV.of(key, OrderedProcessingStatus.create(3L, 0, null, null, elementCount, 0, false)));
+        KV.of(key, OrderedProcessingStatus.create(3L, 0, null, null, elementCount, 3L, 0, false)));
 
     testStreamingProcessing(depth, withTrade, inputEvents, expectedOutput,
         expectedProcessingStatuses);

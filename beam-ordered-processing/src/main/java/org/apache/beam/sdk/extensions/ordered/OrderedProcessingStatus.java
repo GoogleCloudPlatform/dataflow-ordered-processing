@@ -35,6 +35,7 @@ public abstract class OrderedProcessingStatus {
       Long earliestBufferedSequence,
       Long latestBufferedSequence,
       long numberOfReceivedEvents,
+      long resultCount,
       long duplicateCount,
       boolean lastEventReceived) {
     return new AutoValue_OrderedProcessingStatus.Builder()
@@ -45,6 +46,7 @@ public abstract class OrderedProcessingStatus {
         .setNumberOfReceivedEvents(numberOfReceivedEvents)
         .setLastEventReceived(lastEventReceived)
         .setDuplicateCount(duplicateCount)
+        .setResultCount(resultCount)
         .setStatusDate(Instant.now()).build();
   }
 
@@ -69,6 +71,8 @@ public abstract class OrderedProcessingStatus {
 
   public abstract long getDuplicateCount();
 
+  public abstract long getResultCount();
+
   public abstract boolean isLastEventReceived();
 
   public abstract Instant getStatusDate();
@@ -85,6 +89,7 @@ public abstract class OrderedProcessingStatus {
             && Objects.equals(this.getLatestBufferedSequence(), that.getLatestBufferedSequence())
             && Objects.equals(this.getNumberOfBufferedEvents(), that.getNumberOfBufferedEvents())
             && Objects.equals(this.getDuplicateCount(), that.getDuplicateCount())
+            && Objects.equals(this.getResultCount(), that.getResultCount())
             && this.getNumberOfReceivedEvents() == that.getNumberOfReceivedEvents();
     return result;
   }
@@ -93,7 +98,7 @@ public abstract class OrderedProcessingStatus {
   public int hashCode() {
     return Objects.hash(this.getEarliestBufferedSequence(), this.getLastProcessedSequence(),
         this.getLatestBufferedSequence(), this.getNumberOfBufferedEvents(),
-        this.getNumberOfReceivedEvents(), this.getDuplicateCount());
+        this.getNumberOfReceivedEvents(), this.getDuplicateCount(), this.getResultCount());
   }
 
   @AutoValue.Builder
@@ -110,6 +115,8 @@ public abstract class OrderedProcessingStatus {
     public abstract Builder setNumberOfReceivedEvents(long value);
 
     public abstract Builder setDuplicateCount(long value);
+
+    public abstract Builder setResultCount(long value);
 
     public abstract Builder setLastEventReceived(boolean value);
 

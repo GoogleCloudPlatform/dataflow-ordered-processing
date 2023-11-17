@@ -1,0 +1,73 @@
+[
+  {
+    "mode": "REQUIRED",
+    "name": "session_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "contract_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "event_ts",
+    "type": "TIMESTAMP"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "contract_sequence_id",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "last_contract_message",
+    "type": "BOOLEAN"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "order_type",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "order_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "side",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "price",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "quantity",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "quantity_remaining",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "quantity_filled",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "match_number",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "ingest_ts",
+    "type": "TIMESTAMP",
+    "defaultValueExpression": "CURRENT_TIMESTAMP()"
+  }
+]

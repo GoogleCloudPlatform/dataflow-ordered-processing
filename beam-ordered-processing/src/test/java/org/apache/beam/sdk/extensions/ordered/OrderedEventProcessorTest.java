@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import org.apache.beam.sdk.coders.CannotProvideCoderException;
@@ -224,32 +225,50 @@ public class OrderedEventProcessorTest {
 
   @Test
   public void testPerfectOrderingProcessing() throws CannotProvideCoderException {
-    testProcessing(new Event[]{Event.create(0, "id-1", "a"), Event.create(1, "id-1", "b"),
-            Event.create(2, "id-1", "c"), Event.create(3, "id-1", "d"), Event.create(0, "id-2", "a"),
-            Event.create(1, "id-2", "b"),},
-        new KV[]{KV.of("id-1", OrderedProcessingStatus.create(3L, 0, null, null, 4, 0, false)),
-            KV.of("id-2", OrderedProcessingStatus.create(1L, 0, null, null, 2, 0, false)),},
-        new KV[]{KV.of("id-1", "a"), KV.of("id-1", "ab"), KV.of("id-1", "abc"),
-            KV.of("id-1", "abcd"), KV.of("id-2", "a"), KV.of("id-2", "ab"),}, 1, 0, 1000, false);
+    Event[] events = {
+        Event.create(0, "id-1", "a"),
+        Event.create(1, "id-1", "b"),
+        Event.create(2, "id-1", "c"),
+        Event.create(3, "id-1", "d"),
+        Event.create(0, "id-2", "a"),
+        Event.create(1, "id-2", "b")};
+    testProcessing(events,
+        new KV[]{
+            KV.of("id-1", OrderedProcessingStatus.create(3L, 0, null, null, 4,
+                Arrays.stream(events).filter(e -> e.getId().equals("id-1")).count(), 0, false)),
+            KV.of("id-2", OrderedProcessingStatus.create(1L, 0, null, null, 2,
+                Arrays.stream(events).filter(e -> e.getId().equals("id-2")).count(), 0, false))
+        },
+        new KV[]{
+            KV.of("id-1", "a"),
+            KV.of("id-1", "ab"),
+            KV.of("id-1", "abc"),
+            KV.of("id-1", "abcd"),
+            KV.of("id-2", "a"),
+            KV.of("id-2", "ab")
+        }, 1, 0, 1000, false);
   }
 
   @Test
   public void testOutOfSequenceProcessing() throws CannotProvideCoderException {
-    testProcessing(new Event[]{
-            Event.create(2, "id-1", "c"),
-            Event.create(1, "id-1", "b"),
-            Event.create(0, "id-1", "a"),
-            Event.create(3, "id-1", "d"),
+    Event[] events = {
+        Event.create(2, "id-1", "c"),
+        Event.create(1, "id-1", "b"),
+        Event.create(0, "id-1", "a"),
+        Event.create(3, "id-1", "d"),
 
-            Event.create(1, "id-2", "b"),
-            Event.create(2, "id-2", "c"),
-            Event.create(4, "id-2", "e"),
-            Event.create(0, "id-2", "a"),
-            Event.create(3, "id-2", "d")
-        },
+        Event.create(1, "id-2", "b"),
+        Event.create(2, "id-2", "c"),
+        Event.create(4, "id-2", "e"),
+        Event.create(0, "id-2", "a"),
+        Event.create(3, "id-2", "d")
+    };
+    testProcessing(events,
         new KV[]{
-            KV.of("id-1", OrderedProcessingStatus.create(3L, 0, null, null, 4, 0, false)),
-            KV.of("id-2", OrderedProcessingStatus.create(4L, 0, null, null, 5, 0, false))},
+            KV.of("id-1", OrderedProcessingStatus.create(3L, 0, null, null, 4,
+                Arrays.stream(events).filter(e -> e.getId().equals("id-1")).count(), 0, false)),
+            KV.of("id-2", OrderedProcessingStatus.create(4L, 0, null, null, 5,
+                Arrays.stream(events).filter(e -> e.getId().equals("id-2")).count(), 0, false))},
         new KV[]{
             KV.of("id-1", "a"),
             KV.of("id-1", "ab"),
@@ -265,28 +284,43 @@ public class OrderedEventProcessorTest {
 
   @Test
   public void testUnfinishedProcessing() throws CannotProvideCoderException {
-    testProcessing(new Event[]{Event.create(2, "id-1", "c"),
+    testProcessing(new Event[]{
+            Event.create(2, "id-1", "c"),
 //   Excluded                     Event.create(1, "id-1", "b"),
-            Event.create(0, "id-1", "a"), Event.create(3, "id-1", "d"), Event.create(0, "id-2", "a"),
+            Event.create(0, "id-1", "a"),
+            Event.create(3, "id-1", "d"),
+            Event.create(0, "id-2", "a"),
             Event.create(1, "id-2", "b"),},
-        new KV[]{KV.of("id-1", OrderedProcessingStatus.create(0L, 2, 2L, 3L, 3, 0, false)),
-            KV.of("id-2", OrderedProcessingStatus.create(1L, 0, null, null, 2, 0, false))},
-        new KV[]{KV.of("id-1", "a"), KV.of("id-2", "a"), KV.of("id-2", "ab")}, 1, 0, 1000, false);
+        new KV[]{
+            KV.of("id-1", OrderedProcessingStatus.create(0L, 2, 2L, 3L, 3, 1L, 0, false)),
+            KV.of("id-2", OrderedProcessingStatus.create(1L, 0, null, null, 2, 2L, 0, false))},
+        new KV[]{
+            KV.of("id-1", "a"),
+            KV.of("id-2", "a"),
+            KV.of("id-2", "ab")
+        }, 1, 0, 1000, false);
   }
 
   @Test
   public void testHandlingOfDuplicateSequences() throws CannotProvideCoderException {
-    testProcessing(new Event[]{
-            Event.create(0, "id-1", "a"),
-            Event.create(1, "id-1", "b"),
-            Event.create(2, "id-1", "c"),
-            Event.create(3, "id-1", "d"),
-            // Duplicates
-            Event.create(1, "id-1", "b"),
-            Event.create(3, "id-1", "z"),
-        },
+    Event[] events = {
+        Event.create(3, "id-1", "d"),
+        Event.create(2, "id-1", "c"),
+        // Duplicates to be buffered
+        Event.create(3, "id-1", "d"),
+        Event.create(3, "id-1", "d"),
+
+        Event.create(0, "id-1", "a"),
+        Event.create(1, "id-1", "b"),
+
+        // Duplicates after the events are processed
+        Event.create(1, "id-1", "b"),
+        Event.create(3, "id-1", "d"),
+    };
+    testProcessing(events,
         new KV[]{
-            KV.of("id-1", OrderedProcessingStatus.create(3L, 0, null, null, 6, 2, false))
+            KV.of("id-1",
+                OrderedProcessingStatus.create(3L, 0, null, null, events.length, 4, 4, false))
         },
         new KV[]{
             KV.of("id-1", "a"),
@@ -305,9 +339,11 @@ public class OrderedEventProcessorTest {
             Event.create(3, "id-1", "d"),
             Event.create(0, "id-2", "a"),
             Event.create(1, "id-2", "b"),},
-        new KV[]{KV.of("id-1", OrderedProcessingStatus.create(3L, 0, null, null, 4, 0, false)),
-            KV.of("id-2", OrderedProcessingStatus.create(1L, 0, null, null, 2, 0, false))},
-        new KV[]{KV.of("id-1", "a"),
+        new KV[]{
+            KV.of("id-1", OrderedProcessingStatus.create(3L, 0, null, null, 4, 2L, 0, false)),
+            KV.of("id-2", OrderedProcessingStatus.create(1L, 0, null, null, 2, 1L, 0, false))},
+        new KV[]{
+            KV.of("id-1", "a"),
 //  Skipped                      KV.of("id-1", "ab"),
             KV.of("id-1", "abc"),
 //  Skipped                      KV.of("id-1", "abcd"),
@@ -350,22 +386,23 @@ public class OrderedEventProcessorTest {
         // Last event will result in a batch of events being produced. That's why it's excluded here.
         expectedStatuses.add(KV.of(key,
             OrderedProcessingStatus.create(null, bufferedEventCount, 2L, sequence,
-                bufferedEventCount, 0, false)));
+                bufferedEventCount, 0L, 0, false)));
       }
     }
 
     // Statuses produced by the batched processing
-    for (int i = 1 + maxResultsPerOutput; i < sequences.length; i += maxResultsPerOutput) {
+    for (int i = maxResultsPerOutput; i < sequences.length; i += maxResultsPerOutput) {
       long lastOutputSequence = i;
       expectedStatuses.add(KV.of(key,
           OrderedProcessingStatus.create(lastOutputSequence, sequences.length - lastOutputSequence,
-              lastOutputSequence + 1, (long) sequences.length, sequences.length, 0, false)));
+              lastOutputSequence + 1, (long) sequences.length, sequences.length, lastOutputSequence,
+              0, false)));
     }
 
     //-- Final status - indicates that everything has been fully processed
     expectedStatuses.add(KV.of(key,
         OrderedProcessingStatus.create((long) sequences.length, 0, null, null,
-            sequences.length, 0, false)));
+            sequences.length, sequences.length, 0, false)));
 
     testProcessing(events.toArray(Event[]::new), expectedStatuses.toArray(KV[]::new),
         expectedOutput.toArray(KV[]::new), 1,
@@ -397,32 +434,41 @@ public class OrderedEventProcessorTest {
     }
 
     int numberOfReceivedEvents = 0;
-    KV<String, OrderedProcessingStatus>[] expectedStatuses = new KV[]{KV.of(key,
-        OrderedProcessingStatus.create(null, 1, 2L, 2L, ++numberOfReceivedEvents, 0, false)),
+    KV<String, OrderedProcessingStatus>[] expectedStatuses = new KV[]{
         KV.of(key,
-            OrderedProcessingStatus.create(null, 2, 2L, 3L, ++numberOfReceivedEvents, 0, false)),
+            OrderedProcessingStatus.create(null, 1, 2L, 2L, ++numberOfReceivedEvents, 0L, 0,
+                false)),
         KV.of(key,
-            OrderedProcessingStatus.create(null, 3, 2L, 7L, ++numberOfReceivedEvents, 0, false)),
+            OrderedProcessingStatus.create(null, 2, 2L, 3L, ++numberOfReceivedEvents, 0L, 0,
+                false)),
         KV.of(key,
-            OrderedProcessingStatus.create(null, 4, 2L, 8L, ++numberOfReceivedEvents, 0, false)),
+            OrderedProcessingStatus.create(null, 3, 2L, 7L, ++numberOfReceivedEvents, 0L, 0,
+                false)),
         KV.of(key,
-            OrderedProcessingStatus.create(null, 5, 2L, 9L, ++numberOfReceivedEvents, 0, false)),
+            OrderedProcessingStatus.create(null, 4, 2L, 8L, ++numberOfReceivedEvents, 0L, 0,
+                false)),
         KV.of(key,
-            OrderedProcessingStatus.create(null, 6, 2L, 10L, ++numberOfReceivedEvents, 0, false)),
+            OrderedProcessingStatus.create(null, 5, 2L, 9L, ++numberOfReceivedEvents, 0L, 0,
+                false)),
+        KV.of(key,
+            OrderedProcessingStatus.create(null, 6, 2L, 10L, ++numberOfReceivedEvents, 0L, 0,
+                false)),
         // --- 1 has appeared and caused the batch to be sent out.
         KV.of(key,
-            OrderedProcessingStatus.create(3L, 4, 7L, 10L, ++numberOfReceivedEvents, 0, false)),
+            OrderedProcessingStatus.create(3L, 4, 7L, 10L, ++numberOfReceivedEvents, 3L, 0, false)),
         KV.of(key,
-            OrderedProcessingStatus.create(4L, 4, 7L, 10L, ++numberOfReceivedEvents, 0, false)),
+            OrderedProcessingStatus.create(4L, 4, 7L, 10L, ++numberOfReceivedEvents, 4L, 0, false)),
         KV.of(key,
-            OrderedProcessingStatus.create(5L, 4, 7L, 10L, ++numberOfReceivedEvents, 0, false)),
+            OrderedProcessingStatus.create(5L, 4, 7L, 10L, ++numberOfReceivedEvents, 5L, 0, false)),
         // --- 6 came and 6, 7, and 8 got output
         KV.of(key,
-            OrderedProcessingStatus.create(9L, 1, 10L, 10L, ++numberOfReceivedEvents, 0, false)),
+            OrderedProcessingStatus.create(8L, 2, 9L, 10L, ++numberOfReceivedEvents, 8L, 0,
+                false)),
         // Last timer run produces the final status. Number of received events doesn't increase,
         // this is the result of a timer processing
         KV.of(key,
-            OrderedProcessingStatus.create(10L, 0, null, null, numberOfReceivedEvents, 0, false)),};
+            OrderedProcessingStatus.create(10L, 0, null, null, numberOfReceivedEvents, 10L, 0,
+                false)),};
 
     testProcessing(events.toArray(Event[]::new), expectedStatuses,
         expectedOutput.toArray(KV[]::new), 1,
@@ -461,9 +507,10 @@ public class OrderedEventProcessorTest {
 
     if (produceStatusOnEveryEvent) {
       orderedEventProcessor = orderedEventProcessor.produceStatusUpdatesOnEveryEvent(true)
+          // This disables status updates emitted on timers. Needed for simpler testing when per event update is needed.
           .withStatusUpdateFrequencySeconds(-1);
     } else {
-      orderedEventProcessor = orderedEventProcessor.withStatusUpdateFrequencySeconds(20);
+      orderedEventProcessor = orderedEventProcessor.withStatusUpdateFrequencySeconds(300);
     }
 
     OrderedEventProcessorResult<String, String> orderedProcessing = input.apply("Process Events",

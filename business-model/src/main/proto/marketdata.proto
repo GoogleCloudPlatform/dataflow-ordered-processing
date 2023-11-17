@@ -75,7 +75,6 @@ message OrderBookEvent {
 message MarketDepth {
   int64 timestampMS = 1;   // Millisecond timestmp
   int64 contractId = 2;    // Contract ID (unique ordering)
-  int64 messageId = 3;     // Message ID (corresponds to OrderBookEvent messageId)
 
   // Sequence IDs (global and per contract) will skip
   // any updates that do not generate a market depth.
