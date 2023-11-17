@@ -54,6 +54,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class OrderedEventProcessorTest {
 
+  public static final boolean LAST_EVENT_RECEIVED = true;
   @Rule
   public final transient TestPipeline p = TestPipeline.create();
 
@@ -170,6 +171,7 @@ public class OrderedEventProcessorTest {
 
   static class StringBufferEventExaminer implements EventExaminer<String> {
 
+    public static final String LAST_INPUT = "z";
     private final long initialSequence;
 
     public StringBufferEventExaminer(long initialSequence) {
@@ -183,8 +185,7 @@ public class OrderedEventProcessorTest {
 
     @Override
     public boolean isLastEvent(long sequenceNumber, String input) {
-      // TODO: implement and test
-      return false;
+      return input.equals(LAST_INPUT);
     }
   }
 
@@ -473,6 +474,43 @@ public class OrderedEventProcessorTest {
     testProcessing(events.toArray(Event[]::new), expectedStatuses,
         expectedOutput.toArray(KV[]::new), 1,
         1L /* This dataset assumes 1 as the starting sequence */, maxResultsPerOutput, true);
+  }
+
+  @Test
+  public void testHandlingOfMaxSequenceNumber() throws CannotProvideCoderException {
+    Event[] events = {
+        Event.create(0, "id-1", "a"),
+        Event.create(1, "id-1", "b"),
+        Event.create(Long.MAX_VALUE, "id-1", "c")};
+
+    testProcessing(events,
+        new KV[]{
+            KV.of("id-1", OrderedProcessingStatus.create(1L, 0, null, null, 3,
+                2, 0, false))
+        },
+        new KV[]{
+            KV.of("id-1", "a"),
+            KV.of("id-1", "ab"),
+        }, 1, 0, 1000, false);
+  }
+
+  @Test
+  public void testProcessingOfTheLastInput() throws CannotProvideCoderException {
+    Event[] events = {
+        Event.create(0, "id-1", "a"),
+        Event.create(1, "id-1", "b"),
+        Event.create(2, "id-1", StringBufferEventExaminer.LAST_INPUT)};
+
+    testProcessing(events,
+        new KV[]{
+            KV.of("id-1", OrderedProcessingStatus.create(2L, 0, null, null, events.length,
+                events.length, 0, LAST_EVENT_RECEIVED))
+        },
+        new KV[]{
+            KV.of("id-1", "a"),
+            KV.of("id-1", "ab"),
+            KV.of("id-1", "ab" + StringBufferEventExaminer.LAST_INPUT),
+        }, 1, 0, 1000, false);
   }
 
   private void testProcessing(Event[] events, KV[] expectedStatuses, KV[] expectedOutput,

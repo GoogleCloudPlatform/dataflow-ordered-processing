@@ -358,7 +358,6 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
       if (processingState == null) {
         // This is the first time we see this key/window pair
         processingState = new ProcessingState<>(key);
-        // TODO: currently the parent transform doesn't support optional output of the statuses.
         if (statusUpdateFrequency != null) {
           // Set up the timer to produce the status of the processing on a regular basis
           statusEmissionTimer.offset(statusUpdateFrequency).setRelative();
@@ -382,6 +381,16 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
 
       saveStatesAndOutputDiagnostics(processingStateState, processingState, mutableStateState,
           state, outputReceiver, diagnostics, key, window.maxTimestamp());
+
+      checkIfProcessingIsCompleted(processingState);
+    }
+
+    private boolean checkIfProcessingIsCompleted(ProcessingState<Key> processingState) {
+      boolean result = processingState.isProcessingCompleted();
+      if (result) {
+        LOG.info("Processing for key '" + processingState.getKey() + "' is completed.");
+      }
+      return result;
     }
 
     private void saveStatesAndOutputDiagnostics(
@@ -407,16 +416,21 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
         statusTimestamp =
             statusTimestamp.isAfter(windowTimestamp) ? statusTimestamp : windowTimestamp;
 
-        outputReceiver.get(statusTupleTag).outputWithTimestamp(KV.of(processingStatus.getKey(),
-            OrderedProcessingStatus.create(processingStatus.getLastOutputSequence(),
-                processingStatus.getBufferedRecordCount(),
-                processingStatus.getEarliestBufferedSequence(),
-                processingStatus.getLatestBufferedSequence(),
-                processingStatus.getRecordsReceived(),
-                processingStatus.getResultCount(),
-                processingStatus.getDuplicates(),
-                processingStatus.isLastEventReceived())), statusTimestamp);
+        emitProcessingStatus(processingStatus, outputReceiver, statusTimestamp);
       }
+    }
+
+    private void emitProcessingStatus(ProcessingState<Key> processingState,
+        MultiOutputReceiver outputReceiver, Instant statusTimestamp) {
+      outputReceiver.get(statusTupleTag).outputWithTimestamp(KV.of(processingState.getKey(),
+          OrderedProcessingStatus.create(processingState.getLastOutputSequence(),
+              processingState.getBufferedRecordCount(),
+              processingState.getEarliestBufferedSequence(),
+              processingState.getLatestBufferedSequence(),
+              processingState.getRecordsReceived(),
+              processingState.getResultCount(),
+              processingState.getDuplicates(),
+              processingState.isLastEventReceived())), statusTimestamp);
     }
 
     /**
@@ -435,9 +449,14 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
         ProcessingState<Key> processingState, ValueState<State> currentStateState,
         OrderedListState<Event> bufferedEventsState,
         OutputReceiver<KV<Key, Result>> resultOutputter, Builder diagnostics) {
+      if (currentSequence == Long.MAX_VALUE) {
+        LOG.error("Received an event with " + currentSequence + " as the sequence number. "
+            + "It will be dropped because it needs to be less than Long.MAX_VALUE.");
+        return null;
+      }
 
       if (processingState.hasAlreadyBeenProcessed(currentSequence)) {
-        //-- TODO: add to statistics. Perhaps need DLQ for these events.
+        //-- ProcessingState keeps track of the duplicates. Perhaps need DLQ for these events.
         return null;
       }
 
@@ -445,7 +464,6 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
       boolean thisIsTheLastEvent = eventExaminer.isLastEvent(currentSequence, currentEvent);
       if (eventExaminer.isInitialEvent(currentSequence, currentEvent)) {
         // First event of the key/window
-        // TODO: do we need to validate that we haven't initialized the state already?
         // What if it's a duplicate event - it will reset everything. Shall we drop/DLQ anything that's before
         // the processingState.lastOutputSequence?
         try {
@@ -527,7 +545,6 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
       Instant firstEventRead = null;
 
       Instant startRange = Instant.ofEpochMilli(processingState.getEarliestBufferedSequence());
-      // TODO: checks against lastBufferedSequence reaching Long.MAX_VALUE
       Instant endRange = Instant.ofEpochMilli(processingState.getLatestBufferedSequence() + 1);
       Instant endClearRange = null;
 
@@ -603,8 +620,7 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
     }
 
     @OnTimer(LARGE_BATCH_EMISSION_TIMER)
-    public void onLargeBatchEmissionContinuation(OnTimerContext context,
-//        @AlwaysFetched
+    public void onBatchEmission(OnTimerContext context,
         @StateId(BUFFERED_EVENTS) OrderedListState<Event> bufferedEventsState,
         @AlwaysFetched @StateId(PROCESSING_STATE) ValueState<ProcessingState<Key>> processingStatusState,
         @AlwaysFetched @StateId(MUTABLE_STATE) ValueState<State> currentStateState,
@@ -634,6 +650,8 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
           state, outputReceiver, diagnostics, processingState.getKey(),
           // TODO: validate that this is correct.
           context.window().maxTimestamp());
+
+      checkIfProcessingIsCompleted(processingState);
     }
 
     @OnTimer(STATUS_EMISSION_TIMER)
@@ -641,30 +659,23 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
     public void onStatusEmission(MultiOutputReceiver outputReceiver,
         @TimerId(STATUS_EMISSION_TIMER) Timer statusEmissionTimer,
         @StateId(WINDOW_CLOSED) ValueState<Boolean> windowClosedState,
-        @StateId(PROCESSING_STATE) ValueState<ProcessingState<Key>> processingStatusState) {
+        @StateId(PROCESSING_STATE) ValueState<ProcessingState<Key>> processingStateState) {
 
-      ProcessingState<Key> currentStatus = processingStatusState.read();
-      if (currentStatus == null) {
+      ProcessingState<Key> currentState = processingStateState.read();
+      if (currentState == null) {
         // This could happen if the state has been purged already during the draining.
         // It means that there is nothing that we can do and we just need to return.
         LOG.warn(
-            "Current status is null in onStatusEmission() - most likely the pipeline is shutting down.");
+            "Current processing state is null in onStatusEmission() - most likely the pipeline is shutting down.");
         return;
       }
-      outputReceiver.get(statusTupleTag).outputWithTimestamp(KV.of(currentStatus.getKey(),
-          OrderedProcessingStatus.create(currentStatus.getLastOutputSequence(),
-              currentStatus.getBufferedRecordCount(), currentStatus.getEarliestBufferedSequence(),
-              currentStatus.getLatestBufferedSequence(), currentStatus.getRecordsReceived(),
-              currentStatus.getResultCount(),
-              currentStatus.getDuplicates(),
-              currentStatus.isLastEventReceived())), Instant.now());
 
-      if (currentStatus.isProcessingCompleted()) {
-        LOG.info("Processing for key '" + currentStatus.getKey() + "' is completed.");
-        return;
-      }
+      emitProcessingStatus(currentState, outputReceiver, Instant.now());
+
       Boolean windowClosed = windowClosedState.read();
-      if (windowClosed == null || !windowClosed) {
+      if (!currentState.isProcessingCompleted()
+          // Stop producing statuses if we are finished for a particular key
+          && (windowClosed == null || !windowClosed)) {
         statusEmissionTimer.offset(statusUpdateFrequency).setRelative();
       }
     }

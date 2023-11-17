@@ -42,10 +42,18 @@
     <!--    TODO: remove once 2.52 is released-->
     <beam.version>2.52.0-SNAPSHOT</beam.version>
     <autovalue.version>1.10.4</autovalue.version>
-    <!--    TODO: convert tests to JUnit 5 -->
     <junit.version>4.13.2</junit.version>
     <slf4j.version>1.7.30</slf4j.version>
+    <demo.version>1.0-SNAPSHOT</demo.version>
   </properties>
+
+  <!--      TODO: remove once 2.52 is released -->
+  <repositories>
+    <repository>
+      <id>beam-snapshots</id>
+      <url>https://repository.apache.org/content/repositories/snapshots/</url>
+    </repository>
+  </repositories>
 
   <dependencyManagement>
     <dependencies>

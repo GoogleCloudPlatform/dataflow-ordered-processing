@@ -25,8 +25,9 @@ public interface MutableState<Event, Result> extends Serializable {
   /**
    * The interface assumes that events will mutate the state without the possibility of throwing an
    * error.
-   * TODO: this might be too simplistic and a mechanism for failure of applying the event to a state
-   * would need to be created.
+   * <p>
+   * This might be too simplistic and a mechanism for failure of applying the event to a state would
+   * need to be created.
    *
    * @param mutation
    * @return

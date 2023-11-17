@@ -27,8 +27,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 
-// TODO: better transform name (remove "transform") and decide if we shoudl use AutoValue approach to construct it.
-public class OrderBookBuilderTransform extends
+public class OrderBookProducer extends
     PTransform<PCollection<OrderBookEvent>, OrderedEventProcessorResult<SessionContractKey, MarketDepth>> {
 
   private final int depth;
@@ -37,17 +36,17 @@ public class OrderBookBuilderTransform extends
   private boolean produceStatusUpdatesOnEveryEvent = false;
   private int statusUpdateFrequency = 0;
 
-  public OrderBookBuilderTransform(int depth, boolean withTrade) {
+  public OrderBookProducer(int depth, boolean withTrade) {
     this.depth = depth;
     this.withTrade = withTrade;
   }
 
-  public OrderBookBuilderTransform produceStatusUpdatesOnEveryEvent() {
+  public OrderBookProducer produceStatusUpdatesOnEveryEvent() {
     this.produceStatusUpdatesOnEveryEvent = true;
     return this;
   }
 
-  public OrderBookBuilderTransform produceStatusUpdatesInSeconds(int seconds) {
+  public OrderBookProducer produceStatusUpdatesInSeconds(int seconds) {
     this.statusUpdateFrequency = seconds;
     return this;
   }

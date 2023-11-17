@@ -55,12 +55,6 @@ public abstract class OrderedProcessingStatus {
 
   public abstract long getNumberOfBufferedEvents();
 
-  /**
-   * This sequence is not guaranteed to be correct; it's possible that there is only a later
-   * sequence in the buffer TODO: see if we can solve it.
-   *
-   * @return
-   */
   @Nullable
   public abstract Long getEarliestBufferedSequence();
 

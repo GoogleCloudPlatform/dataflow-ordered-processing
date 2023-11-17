@@ -44,7 +44,6 @@ public class MarketDepthToTableRowConverter implements
       result.set("offers", getPriceQuantityRepeatedRows(marketDepth.getOffersList()));
     }
 
-//    TODO - check if getLastTrade can be null.
     if(marketDepth.getLastTrade() != null) {
       result.set("last_trade", priceQuantityAsTableRow(marketDepth.getLastTrade()));
     }

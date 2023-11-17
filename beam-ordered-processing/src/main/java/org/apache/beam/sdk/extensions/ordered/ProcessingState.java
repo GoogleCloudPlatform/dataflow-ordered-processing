@@ -158,7 +158,8 @@ class ProcessingState<KeyT> {
     if (bufferedRecordCount == 0) {
       earliestBufferedSequence = latestBufferedSequence = null;
     } else {
-      // TODO: We don't know for sure that it's the earliest record - we would need to test that.
+      // We don't know for sure that it's the earliest record yet, but OrderedEventProcessor will read the next
+      // buffered event and call foundSequenceGap() and adjust this value.
       earliestBufferedSequence = sequence + 1;
     }
   }

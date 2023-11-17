@@ -75,7 +75,7 @@ public class OrderBookProcessingPipelineTest {
     PCollection<OrderBookEvent> events = p.apply("Input", Create.of(inputEvents));
 
     OrderedEventProcessorResult<SessionContractKey, MarketDepth> orderedProcessingResult = events.apply(
-        "Process in order", new OrderBookBuilderTransform(depth, withTrade));
+        "Process in order", new OrderBookProducer(depth, withTrade));
 
     PCollection<KV<SessionContractKey, MarketDepth>> marketDepthResults = orderedProcessingResult.output();
     PAssert.that(marketDepthResults).containsInAnyOrder(expectedOutput);
@@ -201,7 +201,7 @@ public class OrderBookProcessingPipelineTest {
 
     OrderedEventProcessorResult<SessionContractKey, MarketDepth> orderedProcessingResult = events.apply(
         "Process in order",
-        new OrderBookBuilderTransform(depth, withTrade).produceStatusUpdatesOnEveryEvent()
+        new OrderBookProducer(depth, withTrade).produceStatusUpdatesOnEveryEvent()
             .produceStatusUpdatesInSeconds(-1));
 
     PCollection<KV<SessionContractKey, OrderedProcessingStatus>> processingStatuses = orderedProcessingResult.processingStatuses();
