@@ -20,6 +20,8 @@ import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutureCallback;
 import com.google.api.core.ApiFutures;
 import com.google.api.gax.batching.BatchingSettings;
+import com.google.api.gax.batching.FlowControlSettings;
+import com.google.api.gax.batching.FlowController.LimitExceededBehavior;
 import com.google.api.gax.rpc.ApiException;
 import com.google.cloud.StatsTracker.Stats;
 import com.google.cloud.orderbook.model.MarketDepth;
@@ -41,24 +43,33 @@ public class PubSubConsumer implements EventConsumer {
   private final int STATS_FREQUENCY = 5;
   private final Stats orderStats = new Stats("orders");
   private final Stats marketDepthStats = new Stats("market-depths");
-  private final TimerTask statsLogger = StatsTracker.logStats(STATS_FREQUENCY, orderStats, marketDepthStats);
+  private final TimerTask statsLogger = StatsTracker.logStats(STATS_FREQUENCY, orderStats,
+      marketDepthStats);
 
   public PubSubConsumer(String orderTopic, String marketDepthTopic) throws IOException {
+    FlowControlSettings flowControlSettings =
+        FlowControlSettings.newBuilder()
+            // Block more messages from being published when the limit is reached.
+            .setLimitExceededBehavior(LimitExceededBehavior.Block)
+            .setMaxOutstandingRequestBytes(10 * 1024 * 1024L) // 10 MiB
+            .setMaxOutstandingElementCount(10 * 1000L) // 100 messages
+            .build();
 
     BatchingSettings settings = BatchingSettings.newBuilder()
-      .setElementCountThreshold(10*1000L) // default: 100
-      .setRequestByteThreshold(10*1024L)  // default: 1000 bytes
-      .setDelayThreshold(Duration.ofMillis(50))     // default: 1ms
-      .build();
+        .setElementCountThreshold(10 * 1000L) // default: 100
+        .setRequestByteThreshold(10 * 1024L)  // default: 1000 bytes
+        .setDelayThreshold(Duration.ofMillis(50))     // default: 1ms
+        .setFlowControlSettings(flowControlSettings)
+        .build();
 
     // NOTE - this is where .setEndpoint() can be called for regional endpoints and
     //        .setEnableMessageOrdering()
     orderPublisher = Publisher.newBuilder(TopicName.parse(orderTopic))
-      .setBatchingSettings(settings)
-      .build();
+        .setBatchingSettings(settings)
+        .build();
     marketDepthPublisher = Publisher.newBuilder(TopicName.parse(marketDepthTopic))
-      .setBatchingSettings(settings)
-      .build();
+        .setBatchingSettings(settings)
+        .build();
   }
 
   static public Consumer<MarketDepth> publishMarketDepth(Consumer<PubsubMessage> consumer) {

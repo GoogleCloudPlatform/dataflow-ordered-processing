@@ -591,11 +591,11 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
       }
 
       // Temporarily disabled due to https://github.com/apache/beam/pull/28171
-      // It can be removed once https://github.com/apache/beam/pull/28371 is available in a regular release, ETA 2.53.0
 //      bufferedEventsState.clearRange(startRange, endClearRange);
       // TODO: Draining events is a temporary workaround related to https://github.com/apache/beam/issues/28370
+      // It can be removed once https://github.com/apache/beam/pull/28371 is available in a regular release
       while (bufferedEventsIterator.hasNext()) {
-        // Drain the iterator.
+        // Read and discard all events
         bufferedEventsIterator.next();
       }
 
