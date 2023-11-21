@@ -2,10 +2,19 @@
 
 [//]: # ([![Open in Cloud Shell]&#40;https://gstatic.com/cloudssh/images/open-btn.svg&#41;]&#40;https://ssh.cloud.google.com/cloudshell/editor?cloudshell_git_repo=GITHUB_URL&#41;)
 
-*Description*
-Demo code for processing ordered events in Apache Beam pipelines
+Demo code for processing ordered events in Apache Beam pipelines.
 
 ## Features
+
+This repo contain a simulation of the Order Book processing in streaming and batch Apache Beam
+pipelines.
+It shows how ordering processing can be done in Apache Beam at scale, provides a fully functional
+pipeline, a simulator test harness and a set of scripts to visualize processing steps and the output
+of the pipeline.
+
+## Use Case
+
+TODO: describe
 
 ## Getting Started
 
@@ -41,6 +50,81 @@ events:
 
 ```shell
 ./start-simulator.sh
+```
+
+## Analyse the data
+
+Once the pipeline is running, you can use BigQuery console, or `bq` utility to see how the pipeline
+processes the data.
+
+#### Processing state at a glance
+
+To see the processing state for the latest session:
+
+```sql
+WITH latest_statuses AS (SELECT s.received_count,
+                                s.buffered_count,
+                                s.result_count,
+                                s.duplicate_count,
+                                s.last_event_received
+                         FROM `ordered_processing_demo.processing_status` s
+                         WHERE session_id = (SELECT DISTINCT session_id
+                                             FROM `ordered_processing_demo.processing_status`
+                                             ORDER BY session_id DESC
+    LIMIT 1)
+    QUALIFY RANK() OVER (PARTITION BY session_id
+   , contract_id
+ORDER BY status_ts DESC, received_count DESC) = 1 )
+SELECT COUNT(*)                    total_contracts,
+       COUNTIF(last_event_received
+           AND buffered_count = 0) fully_processed,
+       SUM(received_count)         total_orders_received,
+       SUM(buffered_count)         total_orders_buffered,
+       SUM(result_count)           total_results_produced,
+       SUM(duplicate_count)        total_duplicates
+FROM latest_statuses;
+```
+
+#### See the status of processing per each contract
+
+This query shows processing status per contract for the latest session:
+
+```sql
+SELECT *
+FROM `ordered_processing_demo.processing_status`
+WHERE session_id = (SELECT DISTINCT session_id
+                    FROM `ordered_processing_demo.processing_status`
+                    ORDER BY session_id DESC
+    LIMIT 1)
+    QUALIFY RANK() OVER (PARTITION BY session_id
+    , contract_id
+ORDER BY status_ts DESC, received_count DESC) <= 5
+ORDER BY
+    session_id,
+    contract_id,
+    status_ts DESC,
+    received_count DESC
+    LIMIT 300
+```
+
+### Check out the latest market depths for each contract
+
+```sql
+SELECT *
+FROM `ordered_processing_demo.market_depth` QUALIFY RANK() OVER (PARTITION BY session_id, contract_id ORDER BY session_id, contract_sequence_id DESC) <= 5
+ORDER BY
+    session_id,
+    contract_id,
+    contract_sequence_id DESC
+    LIMIT
+    300
+```
+
+## Cleanup
+
+```shell
+./stop-pipeline.sh
+terraform -chdir terraform destroy 
 ```
 
 ## Steps required to create ordered processing
@@ -87,50 +171,6 @@ would need to code classes that tranform MarketDepth to TableRows.
 The core processing of the pipeline is very simple at this point - read the sources, process them
 and save the output.
 
-## Analyse the data
-
-#### See the status of processing per each contract
-
-This query shows processing status per contract for the latest session:
-
-```sql
-SELECT *
-FROM `ordered_processing_demo.processing_status`
-WHERE session_id = (SELECT DISTINCT session_id
-                    FROM `ordered_processing_demo.processing_status`
-                    ORDER BY session_id DESC
-    LIMIT 1)
-    QUALIFY RANK() OVER (PARTITION BY session_id
-    , contract_id
-ORDER BY status_ts DESC, received_count DESC) <= 5
-ORDER BY
-    session_id,
-    contract_id,
-    status_ts DESC,
-    received_count DESC
-    LIMIT 300
-```
-
-### Check out the latest market depths for each contract
-
-```sql
-SELECT *
-FROM `ordered_processing_demo.market_depth` QUALIFY RANK() OVER (PARTITION BY session_id, contract_id ORDER BY session_id, contract_sequence_id DESC) <= 5
-ORDER BY
-    session_id,
-    contract_id,
-    contract_sequence_id DESC
-    LIMIT
-    300
-```
-
-## Cleanup
-
-```shell
-./stop-pipeline.sh
-terraform -chdir terraform destroy 
-```
-
 ## Limitations
 
 ### Duplicate detections
@@ -142,7 +182,7 @@ and the processing results are unpredictable.
 
 The number of detected duplicates will be reported in the emitted processing statuses.
 
-## Addtional Improvements
+## Additional Improvements
 
 ### Store only required elements in buffered objects
 
