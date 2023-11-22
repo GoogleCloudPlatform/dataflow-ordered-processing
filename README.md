@@ -16,6 +16,11 @@ of the pipeline.
 
 TODO: describe
 
+## Pipeline Design
+
+The pipeline uses the Beam's state and timers to process events in order. For a detailed description
+of the steps needed to implement the pipeline see [this document](docs/PipelineDesign.md).
+
 ## Getting Started
 
 1. Clone this repo and switch to the checked out directory
@@ -126,65 +131,6 @@ ORDER BY
 ./stop-pipeline.sh
 terraform -chdir terraform destroy 
 ```
-
-## Steps required to create ordered processing
-
-### Transform the data into the shape needed by the OrderedProcessing transform
-
-Data needs to be in the `KV<GrouppingKey<KV<Long,Event>>` PCollection.
-
-### Create a class which will take the first event and create a MutableState
-
-This function needs to implement `ProcessFunction<EventType, MutableState>` interface. This function
-is also a place where you can pass the parameters needed to initialize the state.
-
-### Create a class which will examine each event
-
-This class needs to implement EventExaminer interface.
-Ordered processor will need to know when to start processing.
-It also needs to know when the last event for a particular key has been received. This will help
-indicate that all processing for a given key has been completed and allow stopping the process
-status reporting and do the cleanup of the memory stored in the state.
-
-### Create coders
-
-Coders are needed by the OrderedProcessor transform to serialize and deserialize the data until it's
-ready to be processed. There are multiple coders used by the transform:
-
-* Mutable state coder. This coder will store the state of the order book. TODO: details
-* Event coder. This coder will store the events to be buffered (out-of-sequence events)
-* Key coder. In our case it's pretty simple. The key type is Long and there is an efficient coder
-  for Longs - VarLongCoder.
-
-### Create a custom transform to wrap the OrderedEventProcessing transform
-
-This is an optional step and technically you don't need to do it. But if you do - the main pipeline
-code will look more compact and the graph on the Dataflow UI will look "prettier".
-
-### Decide where you would like to store the results of the processing
-
-Our pipeline uses BigQuery tables to store the market depths produced by the order builder. You
-would need to code classes that tranform MarketDepth to TableRows.
-
-### Code the pipeline
-
-The core processing of the pipeline is very simple at this point - read the sources, process them
-and save the output.
-
-## Limitations
-
-### Duplicate detections
-
-Currently, the processor will discard the events which have the order number lower than the
-currently
-processed order number. If the new event needs to be buffered the duplicate numbers won't be checked
-and the processing results are unpredictable.
-
-The number of detected duplicates will be reported in the emitted processing statuses.
-
-## Additional Improvements
-
-### Store only required elements in buffered objects
 
 ## Contributing
 

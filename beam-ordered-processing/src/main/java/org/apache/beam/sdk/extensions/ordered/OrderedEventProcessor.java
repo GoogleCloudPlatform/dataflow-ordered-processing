@@ -40,7 +40,6 @@ import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.ProcessFunction;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
@@ -61,14 +60,14 @@ import org.slf4j.LoggerFactory;
  * are applied according to the provided sequence. Events which arrive out of sequence are buffered
  * and reprocessed when new events for a given key arrived.
  *
- * @param <EventT>
- * @param <KeyT>
- * @param <StateT>
+ * @param <Event>
+ * @param <Key>
+ * @param <State>
  */
 @AutoValue
 @SuppressWarnings({"nullness", "TypeNameShadowing"})
-public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extends MutableState<EventT, ResultT>> extends
-    PTransform<PCollection<KV<KeyT, KV<Long, EventT>>>, OrderedEventProcessorResult<KeyT, ResultT>> {
+public abstract class OrderedEventProcessor<Event, Key, Result, State extends MutableState<Event, Result>> extends
+    PTransform<PCollection<KV<Key, KV<Long, Event>>>, OrderedEventProcessorResult<Key, Result>> {
 
   public static final int DEFAULT_STATUS_UPDATE_FREQUENCY_SECONDS = 5;
   public static final boolean DEFAULT_PRODUCE_DIAGNOSTIC_EVENTS = false;
@@ -78,21 +77,19 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
   /**
    * Default constructor method
    *
-   * @param initialStateCreator creates the initial state type based on the first event
-   * @param eventCoder          coder for the Event class
-   * @param stateCoder          coder for the State class
-   * @param keyTypeCoder        coder for the Key class
+   * @param eventCoder   coder for the Event class
+   * @param stateCoder   coder for the State class
+   * @param keyTypeCoder coder for the Key class
    * @param <EventType>
    * @param <KeyType>
    * @param <StateType>
    * @return
    */
   public static <EventType, KeyType, ResultType, StateType extends MutableState<EventType, ResultType>> OrderedEventProcessor<EventType, KeyType, ResultType, StateType> create(
-      ProcessFunction<EventType, StateType> initialStateCreator,
-      EventExaminer<EventType> eventExaminer, Coder<EventType> eventCoder,
+      EventExaminer<EventType, StateType> eventExaminer, Coder<EventType> eventCoder,
       Coder<StateType> stateCoder, Coder<KeyType> keyTypeCoder, Coder<ResultType> resultTypeCoder) {
     // TODO: none of the values are marked as @Nullable and the transform will fail if nulls are provided. But need a better error messaging.
-    return new AutoValue_OrderedEventProcessor<>(initialStateCreator, eventExaminer, eventCoder,
+    return new AutoValue_OrderedEventProcessor<>(eventExaminer, eventCoder,
         stateCoder, keyTypeCoder, resultTypeCoder,
         DEFAULT_STATUS_UPDATE_FREQUENCY_SECONDS, DEFAULT_PRODUCE_STATUS_UPDATE_ON_EVERY_EVENT,
         DEFAULT_PRODUCE_DIAGNOSTIC_EVENTS, DEFAULT_MAX_ELEMENTS_TO_OUTPUT);
@@ -106,18 +103,18 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
    * @return
    */
 
-  public OrderedEventProcessor<EventT, KeyT, ResultT, StateT> withStatusUpdateFrequencySeconds(
+  public OrderedEventProcessor<Event, Key, Result, State> withStatusUpdateFrequencySeconds(
       int seconds) {
-    return new AutoValue_OrderedEventProcessor<>(this.getInitialStateCreator(),
+    return new AutoValue_OrderedEventProcessor<>(
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
         this.getResultCoder(), seconds,
         this.isProduceStatusUpdateOnEveryEvent(), this.isProduceDiagnosticEvents(),
         this.getMaxNumberOfResultsPerOutput());
   }
 
-  public OrderedEventProcessor<EventT, KeyT, ResultT, StateT> produceDiagnosticEvents(
+  public OrderedEventProcessor<Event, Key, Result, State> produceDiagnosticEvents(
       boolean produceDiagnosticEvents) {
-    return new AutoValue_OrderedEventProcessor<>(this.getInitialStateCreator(),
+    return new AutoValue_OrderedEventProcessor<>(
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
         this.getResultCoder(),
         this.getStatusUpdateFrequencySeconds(), this.isProduceStatusUpdateOnEveryEvent(),
@@ -130,35 +127,33 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
    *
    * @return
    */
-  public OrderedEventProcessor<EventT, KeyT, ResultT, StateT> produceStatusUpdatesOnEveryEvent(
+  public OrderedEventProcessor<Event, Key, Result, State> produceStatusUpdatesOnEveryEvent(
       boolean value) {
-    return new AutoValue_OrderedEventProcessor<>(this.getInitialStateCreator(),
+    return new AutoValue_OrderedEventProcessor<>(
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
         this.getResultCoder(),
         this.getStatusUpdateFrequencySeconds(), value, this.isProduceDiagnosticEvents(),
         this.getMaxNumberOfResultsPerOutput());
   }
 
-  public OrderedEventProcessor<EventT, KeyT, ResultT, StateT> withMaxResultsPerOutput(
+  public OrderedEventProcessor<Event, Key, Result, State> withMaxResultsPerOutput(
       long maxResultsPerOutput) {
-    return new AutoValue_OrderedEventProcessor<>(this.getInitialStateCreator(),
+    return new AutoValue_OrderedEventProcessor<>(
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
         this.getResultCoder(),
         this.getStatusUpdateFrequencySeconds(), this.isProduceStatusUpdateOnEveryEvent(),
         this.isProduceDiagnosticEvents(), maxResultsPerOutput);
   }
 
-  abstract ProcessFunction<EventT, StateT> getInitialStateCreator();
+  abstract EventExaminer<Event, State> getEventExaminer();
 
-  abstract EventExaminer<EventT> getEventExaminer();
+  abstract Coder<Event> getEventCoder();
 
-  abstract Coder<EventT> getEventCoder();
+  abstract Coder<State> getStateCoder();
 
-  abstract Coder<StateT> getStateCoder();
+  abstract Coder<Key> getKeyCoder();
 
-  abstract Coder<KeyT> getKeyCoder();
-
-  abstract Coder<ResultT> getResultCoder();
+  abstract Coder<Result> getResultCoder();
 
   abstract int getStatusUpdateFrequencySeconds();
 
@@ -169,19 +164,19 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
   abstract long getMaxNumberOfResultsPerOutput();
 
   @Override
-  public OrderedEventProcessorResult<KeyT, ResultT> expand(
-      PCollection<KV<KeyT, KV<Long, EventT>>> input) {
-    final TupleTag<KV<KeyT, ResultT>> mainOutput = new TupleTag<>("mainOutput") {
+  public OrderedEventProcessorResult<Key, Result> expand(
+      PCollection<KV<Key, KV<Long, Event>>> input) {
+    final TupleTag<KV<Key, Result>> mainOutput = new TupleTag<>("mainOutput") {
     };
-    final TupleTag<KV<KeyT, OrderedProcessingStatus>> statusOutput = new TupleTag<>("status") {
+    final TupleTag<KV<Key, OrderedProcessingStatus>> statusOutput = new TupleTag<>("status") {
     };
 
-    final TupleTag<KV<KeyT, OrderedProcessingDiagnosticEvent>> diagnosticOutput = new TupleTag<>(
+    final TupleTag<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticOutput = new TupleTag<>(
         "diagnostics") {
     };
 
     PCollectionTuple processingResult = input.apply(ParDo.of(
-        new OrderedProcessorDoFn<>(getInitialStateCreator(), getEventExaminer(), getEventCoder(),
+        new OrderedProcessorDoFn<>(getEventExaminer(), getEventCoder(),
             getStateCoder(),
             getKeyCoder(), statusOutput,
             getStatusUpdateFrequencySeconds() <= 0 ? null
@@ -248,8 +243,7 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
     private static final String STATUS_EMISSION_TIMER = "statusTimer";
     private static final String LARGE_BATCH_EMISSION_TIMER = "largeBatchTimer";
     private static final String WINDOW_CLOSED = "windowClosed";
-    private final ProcessFunction<Event, State> initialStateCreator;
-    private final EventExaminer<Event> eventExaminer;
+    private final EventExaminer<Event, State> eventExaminer;
 
     @StateId(BUFFERED_EVENTS)
     @SuppressWarnings("unused")
@@ -289,7 +283,6 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
     /**
      * Stateful DoFn for ordered processing.
      *
-     * @param initialStateCreator
      * @param eventCoder
      * @param stateCoder
      * @param keyCoder
@@ -300,14 +293,13 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
      * @param produceStatusUpdateOnEveryEvent
      * @param maxNumberOfResultsToProduce
      */
-    OrderedProcessorDoFn(ProcessFunction<Event, State> initialStateCreator,
-        EventExaminer<Event> eventExaminer, Coder<Event> eventCoder,
+    OrderedProcessorDoFn(
+        EventExaminer<Event, State> eventExaminer, Coder<Event> eventCoder,
         Coder<State> stateCoder, Coder<Key> keyCoder,
         TupleTag<KV<Key, OrderedProcessingStatus>> statusTupleTag, Duration statusUpdateFrequency,
         TupleTag<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticEventsTupleTag,
         boolean produceDiagnosticEvents, boolean produceStatusUpdateOnEveryEvent,
         long maxNumberOfResultsToProduce) {
-      this.initialStateCreator = initialStateCreator;
       this.eventExaminer = eventExaminer;
       this.bufferedEventsSpec = StateSpecs.orderedList(eventCoder);
       this.mutableStateSpec = StateSpecs.value(stateCoder);
@@ -467,7 +459,7 @@ public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extend
         // What if it's a duplicate event - it will reset everything. Shall we drop/DLQ anything that's before
         // the processingState.lastOutputSequence?
         try {
-          state = initialStateCreator.apply(currentEvent);
+          state = eventExaminer.createStateOnInitialEvent(currentEvent);
         } catch (Exception e) {
           // TODO: Handle exception in a better way - DLQ.
           // Initial state creator can be pretty heavy - remote calls, etc..

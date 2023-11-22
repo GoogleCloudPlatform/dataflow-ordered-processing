@@ -63,8 +63,8 @@ public class OrderBookProducer extends
         .registerCoderForClass(SessionContractKey.class, SessionContractKeyCoder.of());
 
     OrderedEventProcessor<OrderBookEvent, SessionContractKey, MarketDepth, OrderBookMutableState> orderedProcessor =
-        OrderedEventProcessor.create(new InitialStateCreator(depth, withTrade),
-                new OrderBookEventExaminer(),
+        OrderedEventProcessor.create(
+                new OrderBookEventExaminer(depth, withTrade),
                 eventCoder,
                 stateCoder,
                 keyCoder, marketDepthCoder)
@@ -76,7 +76,7 @@ public class OrderBookProducer extends
     orderedProcessor = orderedProcessor.withStatusUpdateFrequencySeconds(statusUpdateFrequency);
 
     return input
-        .apply("Convert to KV", ParDo.of(new ConvertOrderToKV()))
+        .apply("Convert to KV", ParDo.of(new ConvertOrderBookEventToKV()))
         .apply("Produce OrderBook", orderedProcessor);
   }
 }

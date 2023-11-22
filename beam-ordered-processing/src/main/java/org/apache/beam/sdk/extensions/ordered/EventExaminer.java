@@ -18,10 +18,11 @@ package org.apache.beam.sdk.extensions.ordered;
 
 import java.io.Serializable;
 
-public interface EventExaminer<Event> extends Serializable {
+public interface EventExaminer<Event, State> extends Serializable {
 
   boolean isInitialEvent(long sequenceNumber, Event event);
 
-  boolean isLastEvent(long sequenceNumber, Event event);
+  State createStateOnInitialEvent(Event event);
 
+  boolean isLastEvent(long sequenceNumber, Event event);
 }

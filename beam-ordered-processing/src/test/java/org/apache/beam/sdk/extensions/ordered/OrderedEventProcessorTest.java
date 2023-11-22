@@ -38,7 +38,6 @@ import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.testing.TestStream;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.ProcessFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.checkerframework.checker.initialization.qual.Initialized;
@@ -152,35 +151,28 @@ public class OrderedEventProcessorTest {
     }
   }
 
-  static class StateInitializer implements ProcessFunction<String, StringBufferState> {
-
-    private final int emissionFrequency;
-
-    StateInitializer(int frequency) {
-      emissionFrequency = frequency;
-    }
-
-    @Override
-    public StringBufferState apply(String input)
-        throws @UnknownKeyFor @NonNull @Initialized Exception {
-      return new StringBufferState(
-          input,
-          emissionFrequency);
-    }
-  }
-
-  static class StringBufferEventExaminer implements EventExaminer<String> {
+  static class StringBufferEventExaminer implements EventExaminer<String, StringBufferState> {
 
     public static final String LAST_INPUT = "z";
     private final long initialSequence;
+    private final int emissionFrequency;
 
-    public StringBufferEventExaminer(long initialSequence) {
+
+    public StringBufferEventExaminer(long initialSequence, int emissionFrequency) {
       this.initialSequence = initialSequence;
+      this.emissionFrequency = emissionFrequency;
     }
 
     @Override
     public boolean isInitialEvent(long sequenceNumber, String input) {
       return sequenceNumber == initialSequence;
+    }
+
+    @Override
+    public StringBufferState createStateOnInitialEvent(String input) {
+      return new StringBufferState(
+          input,
+          emissionFrequency);
     }
 
     @Override
@@ -513,7 +505,8 @@ public class OrderedEventProcessorTest {
         }, 1, 0, 1000, false);
   }
 
-  private void testProcessing(Event[] events, KV[] expectedStatuses, KV[] expectedOutput,
+  private void testProcessing(Event[] events, KV[] expectedStatuses,
+      KV<String, String>[] expectedOutput,
       int emissionFrequency, long initialSequence, int maxResultsPerOutput,
       boolean produceStatusOnEveryEvent)
       throws @UnknownKeyFor @NonNull @Initialized CannotProvideCoderException {
@@ -539,7 +532,7 @@ public class OrderedEventProcessorTest {
     Coder<String> resultCoder = StringUtf8Coder.of();
 
     OrderedEventProcessor<String, String, String, StringBufferState> orderedEventProcessor = OrderedEventProcessor.create(
-            new StateInitializer(emissionFrequency), new StringBufferEventExaminer(initialSequence),
+            new StringBufferEventExaminer(initialSequence, emissionFrequency),
             eventCoder, stateCoder, keyCoder, resultCoder)
         .withMaxResultsPerOutput(maxResultsPerOutput);
 

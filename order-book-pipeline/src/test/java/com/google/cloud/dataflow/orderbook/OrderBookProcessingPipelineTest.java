@@ -51,12 +51,15 @@ public class OrderBookProcessingPipelineTest {
     int depth = 1;
     boolean withTrade = true;
     long contractId = 345L;
+    String sessionId = "session-id-1";
 
     List<OrderBookEvent> inputEvents = Arrays.asList(
-        OrderBookEvent.newBuilder().setOrderId(1L).setContractId(contractId).setContractSeqId(1)
+        OrderBookEvent.newBuilder().setSessionId(sessionId)
+            .setOrderId(1L).setContractId(contractId).setContractSeqId(1)
             .setQuantity(10).setPrice(200).setSide(Side.BUY).build(),
 
-        OrderBookEvent.newBuilder().setOrderId(2L).setContractId(contractId).setContractSeqId(2)
+        OrderBookEvent.newBuilder().setSessionId(sessionId)
+            .setOrderId(2L).setContractId(contractId).setContractSeqId(2)
             .setQuantity(20).setPrice(201).setSide(Side.BUY).build());
 
     OrderBookBuilder orderBookBuilder = new OrderBookBuilder();
@@ -67,8 +70,10 @@ public class OrderBookProcessingPipelineTest {
     for (OrderBookEvent event : inputEvents) {
       elementCount++;
       orderBookBuilder.processEvent(event);
+
       expectedOutput.add(
-          KV.of(SessionContractKey.create("", event.getContractId()),
+          KV.of(SessionContractKey.create(
+                  sessionId, event.getContractId()),
               orderBookBuilder.getCurrentMarketDepth(depth, withTrade)));
     }
 
@@ -88,15 +93,19 @@ public class OrderBookProcessingPipelineTest {
     int depth = 1;
     boolean withTrade = true;
     long contractId = 345L;
+    String sessionId = "session-id-1";
 
     List<OrderBookEvent> inputEvents = Arrays.asList(
-        OrderBookEvent.newBuilder().setOrderId(1L).setContractId(contractId).setContractSeqId(1)
+        OrderBookEvent.newBuilder().setSessionId(sessionId)
+            .setOrderId(1L).setContractId(contractId).setContractSeqId(1)
             .setQuantity(10).setPrice(200).setSide(Side.BUY).build(),
 
-        OrderBookEvent.newBuilder().setOrderId(2L).setContractId(contractId).setContractSeqId(2)
+        OrderBookEvent.newBuilder().setSessionId(sessionId)
+            .setOrderId(2L).setContractId(contractId).setContractSeqId(2)
             .setQuantity(20).setPrice(201).setSide(Side.BUY).build(),
 
-        OrderBookEvent.newBuilder().setOrderId(2L).setContractId(contractId).setContractSeqId(3)
+        OrderBookEvent.newBuilder().setSessionId(sessionId)
+            .setOrderId(2L).setContractId(contractId).setContractSeqId(3)
             .setQuantity(20).setPrice(201).setSide(Side.SELL).build()
 
     );
@@ -111,13 +120,16 @@ public class OrderBookProcessingPipelineTest {
     for (OrderBookEvent event : inputEvents) {
       elementCount++;
       orderBookBuilder.processEvent(event);
+
       expectedOutput.add(
-          KV.of(SessionContractKey.create("", event.getContractId()),
+          KV.of(SessionContractKey.create(sessionId, event.getContractId()),
               orderBookBuilder.getCurrentMarketDepth(depth, withTrade)));
 
-      expectedProcessingStatuses.add(KV.of(SessionContractKey.create("", event.getContractId()),
-          OrderedProcessingStatus.create(elementCount, 0, null, null, elementCount, elementCount, 0,
-              false)));
+      expectedProcessingStatuses.add(
+          KV.of(SessionContractKey.create(sessionId, event.getContractId()),
+              OrderedProcessingStatus.create(elementCount, 0, null, null, elementCount,
+                  elementCount, 0,
+                  false)));
     }
 
     testStreamingProcessing(depth, withTrade, inputEvents, expectedOutput,
@@ -129,15 +141,19 @@ public class OrderBookProcessingPipelineTest {
     int depth = 1;
     boolean withTrade = true;
     long contractId = 345L;
+    String sessionId = "session-id-1";
 
     List<OrderBookEvent> inputEvents = Arrays.asList(
-        OrderBookEvent.newBuilder().setOrderId(1L).setContractId(contractId).setContractSeqId(3)
+        OrderBookEvent.newBuilder().setSessionId(sessionId)
+            .setOrderId(1L).setContractId(contractId).setContractSeqId(3)
             .setQuantity(20).setPrice(200).setSide(Side.SELL).build(),
 
-        OrderBookEvent.newBuilder().setOrderId(1L).setContractId(contractId).setContractSeqId(2)
+        OrderBookEvent.newBuilder().setSessionId(sessionId)
+            .setOrderId(1L).setContractId(contractId).setContractSeqId(2)
             .setQuantity(10).setPrice(200).setSide(Side.BUY).build(),
 
-        OrderBookEvent.newBuilder().setOrderId(2L).setContractId(contractId).setContractSeqId(1)
+        OrderBookEvent.newBuilder().setSessionId(sessionId)
+            .setOrderId(2L).setContractId(contractId).setContractSeqId(1)
             .setQuantity(20).setPrice(201).setSide(Side.BUY).build());
 
     OrderBookBuilder orderBookBuilder = new OrderBookBuilder();
@@ -150,18 +166,19 @@ public class OrderBookProcessingPipelineTest {
     sortedEvents.sort(Comparator.comparingLong(OrderBookEvent::getContractSeqId));
 
     long elementCount = 0;
+
     for (OrderBookEvent event : sortedEvents) {
       elementCount++;
       orderBookBuilder.processEvent(event);
       expectedOutput.add(
-          KV.of(SessionContractKey.create("", event.getContractId()),
+          KV.of(SessionContractKey.create(sessionId, event.getContractId()),
               orderBookBuilder.getCurrentMarketDepth(depth, withTrade)));
     }
 
     elementCount = 0;
 
     ++elementCount;
-    SessionContractKey key = SessionContractKey.create("", contractId);
+    SessionContractKey key = SessionContractKey.create(sessionId, contractId);
     expectedProcessingStatuses.add(
         KV.of(key, OrderedProcessingStatus.create(null, 1, 3L, 3L, elementCount, 0l, 0, false)));
 

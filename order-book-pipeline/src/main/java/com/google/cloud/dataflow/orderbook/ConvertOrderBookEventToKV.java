@@ -17,21 +17,17 @@
 package com.google.cloud.dataflow.orderbook;
 
 import com.google.cloud.orderbook.model.OrderBookEvent;
-import org.apache.beam.sdk.transforms.ProcessFunction;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.values.KV;
 
-public class InitialStateCreator implements ProcessFunction<OrderBookEvent, OrderBookMutableState> {
-  private final int depth;
-  private final boolean withTrade;
+public class ConvertOrderBookEventToKV extends
+    DoFn<OrderBookEvent, KV<SessionContractKey, KV<Long, OrderBookEvent>>> {
 
-  public InitialStateCreator(int depth, boolean withTrade) {
-    this.depth = depth;
-    this.withTrade = withTrade;
-  }
-
-  @Override
-  public OrderBookMutableState apply(OrderBookEvent firstEvent) {
-    OrderBookMutableState orderBookMutableState = new OrderBookMutableState(depth, withTrade);
-    orderBookMutableState.mutate(firstEvent);
-    return orderBookMutableState;
+  @ProcessElement
+  public void convert(@Element OrderBookEvent event,
+      OutputReceiver<KV<SessionContractKey, KV<Long, OrderBookEvent>>> outputReceiver) {
+    outputReceiver.output(
+        KV.of(SessionContractKey.create(event.getSessionId(), event.getContractId()),
+            KV.of(event.getContractSeqId(), event)));
   }
 }

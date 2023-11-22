@@ -19,12 +19,28 @@ package com.google.cloud.dataflow.orderbook;
 import com.google.cloud.orderbook.model.OrderBookEvent;
 import org.apache.beam.sdk.extensions.ordered.EventExaminer;
 
-public class OrderBookEventExaminer implements EventExaminer<OrderBookEvent> {
+public class OrderBookEventExaminer implements
+    EventExaminer<OrderBookEvent, OrderBookMutableState> {
+
+  private final int depth;
+  private final boolean withTrade;
+
+  public OrderBookEventExaminer(int depth, boolean withTrade) {
+    this.depth = depth;
+    this.withTrade = withTrade;
+  }
 
   @Override
   public boolean isInitialEvent(long sequenceNumber, OrderBookEvent event) {
     // We assume that all events in a session start with 1.
     return sequenceNumber == 1L;
+  }
+
+  @Override
+  public OrderBookMutableState createStateOnInitialEvent(OrderBookEvent event) {
+    OrderBookMutableState orderBookMutableState = new OrderBookMutableState(depth, withTrade);
+    orderBookMutableState.mutate(event);
+    return orderBookMutableState;
   }
 
   @Override
