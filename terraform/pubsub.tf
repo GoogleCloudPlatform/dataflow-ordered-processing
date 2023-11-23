@@ -14,6 +14,9 @@
 
 resource "google_pubsub_topic" "order_topic" {
   name = "orders"
+  message_storage_policy {
+    allowed_persistence_regions = ["${var.region}"]
+  }
 }
 
 resource "google_pubsub_subscription" "order_subscription" {
@@ -23,6 +26,9 @@ resource "google_pubsub_subscription" "order_subscription" {
 
 resource "google_pubsub_topic" "market_depth_topic" {
   name = "market-depth"
+  message_storage_policy {
+    allowed_persistence_regions = ["${var.region}"]
+  }
 }
 
 resource "google_pubsub_subscription" "market_depth_subscription" {

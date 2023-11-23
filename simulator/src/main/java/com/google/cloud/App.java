@@ -56,6 +56,7 @@ public class App {
 
   public static final String ORDER_TOPIC = "ordertopic";
   public static final String MARKET_DEPTH_TOPIC = "marketdepthtopic";
+  public static final String REGION = "region";
 
   static {
     // TODO: refactor to use option groups to make sure the two topics are always provided
@@ -76,7 +77,10 @@ public class App {
     options.addOption(Option.builder("r").hasArg(true).longOpt(RATE).optionalArg(true)
         .desc("Rate for event generation (per second, minimum 10)").type(Number.class).build());
     options.addOption(Option.builder("t").hasArg(false).longOpt(SIM_TIME).optionalArg(true)
-        .desc("Use simulated time rather than real time (requires rate for events per second)").build());
+        .desc("Use simulated time rather than real time (requires rate for events per second)")
+        .build());
+    options.addOption(Option.builder("z").hasArg(true).longOpt(REGION).optionalArg(true)
+        .desc("Pub/Sub region to publish to").build());
   }
 
   private static void showHelp() {
@@ -88,6 +92,7 @@ public class App {
 
     String orderTopic = null;
     String marketDepthTopic = null;
+    String region = null;
     Long limit = null;
     Long seed = null;
     Long maxContracts = null;
@@ -113,6 +118,7 @@ public class App {
       maxContracts = (Long) line.getParsedOptionValue(CONTRACTS);
       orderTopic = line.getOptionValue(ORDER_TOPIC);
       marketDepthTopic = line.getOptionValue(MARKET_DEPTH_TOPIC);
+      region = line.getOptionValue(REGION);
 
       if (line.hasOption(HELP)) {
         showHelp();
@@ -125,17 +131,17 @@ public class App {
     }
 
     try (EventConsumer eventConsumer = orderTopic == null ? new StandardOutputConsumer()
-        : new PubSubConsumer(orderTopic, marketDepthTopic)) {
+        : new PubSubConsumer(orderTopic, marketDepthTopic, region)) {
 
 //      System.out.println(
 //          "Starting simulator with max contracts=" + maxContracts + ", limit=" + limit + ", seed="
 //              + seed);
 
       runSimulator(
-        (maxContracts == null) ? 1 : maxContracts,
-        (limit == null) ? 0 : limit,
-        maxSeconds,
-        (seed == null) ? 0 : seed,
+          (maxContracts == null) ? 1 : maxContracts,
+          (limit == null) ? 0 : limit,
+          maxSeconds,
+          (seed == null) ? 0 : seed,
         (eventsPerSecond == null) ? 0 : eventsPerSecond,
         simtime,
         eventConsumer);

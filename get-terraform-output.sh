@@ -15,6 +15,7 @@
 #
 
 export PROJECT_ID=$(terraform -chdir=terraform output -raw project_id)
+export REGION=$(terraform -chdir=terraform output -raw region)
 export GCP_REGION=$(terraform -chdir=terraform output -raw region)
 export BQ_DATASET=$(terraform -chdir=terraform output -raw bq-dataset)
 export MARKET_DEPTH_TABLE_NAME=$(terraform -chdir=terraform output -raw market-depth-table-name)

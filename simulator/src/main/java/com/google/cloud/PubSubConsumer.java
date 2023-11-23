@@ -46,7 +46,8 @@ public class PubSubConsumer implements EventConsumer {
   private final TimerTask statsLogger = StatsTracker.logStats(STATS_FREQUENCY, orderStats,
       marketDepthStats);
 
-  public PubSubConsumer(String orderTopic, String marketDepthTopic) throws IOException {
+  public PubSubConsumer(String orderTopic, String marketDepthTopic, String region)
+      throws IOException {
     FlowControlSettings flowControlSettings =
         FlowControlSettings.newBuilder()
             // Block more messages from being published when the limit is reached.
@@ -62,13 +63,15 @@ public class PubSubConsumer implements EventConsumer {
         .setFlowControlSettings(flowControlSettings)
         .build();
 
-    // NOTE - this is where .setEndpoint() can be called for regional endpoints and
-    //        .setEnableMessageOrdering()
+    String endpoint = (region == null ? "" : region + "-")
+        + "pubsub.googleapis.com:443";
     orderPublisher = Publisher.newBuilder(TopicName.parse(orderTopic))
         .setBatchingSettings(settings)
+        .setEndpoint(endpoint)
         .build();
     marketDepthPublisher = Publisher.newBuilder(TopicName.parse(marketDepthTopic))
         .setBatchingSettings(settings)
+        .setEndpoint(endpoint)
         .build();
   }
 
