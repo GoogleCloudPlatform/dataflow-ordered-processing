@@ -115,14 +115,6 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
     this.maxDurationSeconds = maxSeconds;
     this.maxEvents = maxEvents;
 
-    // TODO: review this - it produces an event with contract id = 0.
-//    addAtShutdown(new Callable<List<OrderBookEvent>>() {
-//      @Override
-//      public List<OrderBookEvent> call() throws Exception {
-//        return Arrays.asList(buildFinalOrderBookEvent().build());
-//      }
-//    });
-
     this.sessionId = sessionId;
   }
 

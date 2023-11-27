@@ -19,7 +19,7 @@ TODO: describe
 ## Pipeline Design
 
 The pipeline uses the Beam's state and timers to process events in order. For a detailed description
-of the steps needed to implement the pipeline see [this document](docs/PipelineDesign.md).
+of the steps needed to implement the pipeline see [this document](docs/pipeline-design.md).
 
 ## Getting Started
 

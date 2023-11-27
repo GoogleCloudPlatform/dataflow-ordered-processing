@@ -82,9 +82,14 @@ is [MarketDepthToTableRowConverter](/order-book-pipeline/src/main/java/com/googl
 
 ### Code the pipeline
 
-The core processing of the pipeline is very simple at this point: read the sources, process them
-and save the
+The final pipeline is very simple at this point: read the sources (Google Pub/Sub subscription in
+our case),
+build the order book and save the
 output - [OrderBookProcessingPipeline](/order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/OrderBookProcessingPipeline.java).
+
+This is the pipeline graph:
+
+![pipeline graph](pipeline-graph.png)
 
 ## Fine print
 
@@ -97,6 +102,8 @@ and the processing results are unpredictable.
 
 The number of detected duplicates will be reported in the emitted processing statuses.
 
-## Additional Improvements
+### Additional Improvements
 
-### Store only required elements in buffered objects
+* Store only required data elements in buffered objects.
+* Emit warnings on processing which misses some SLA based on the processing status PCollection
+  emitted by the OrderedEventProcessor.

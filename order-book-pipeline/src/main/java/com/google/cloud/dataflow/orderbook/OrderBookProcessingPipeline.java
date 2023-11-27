@@ -75,6 +75,7 @@ public class OrderBookProcessingPipeline {
     void setOrderBookDepth(int depth);
 
     @Description("Include the last trade in the order book? (default is yes)")
+    @Required
     @Default.Boolean(true)
     boolean isIncludeLastTrade();
 
@@ -121,21 +122,19 @@ public class OrderBookProcessingPipeline {
 
   private static <Input> void storeInBigQuery(PCollection<Input> input, String tableName,
       String shortTableDescription, SerializableFunction<Input, TableRow> formatFunction) {
-    WriteResult processingStatusWriteResult = input.apply(shortTableDescription + " to BigQuery",
+    WriteResult processingStatusWriteResult = input.apply(shortTableDescription + " to BQ",
         BigQueryIO.<Input>write()
             .to(tableName)
             .withFormatFunction(formatFunction)
             .withMethod(Method.STORAGE_WRITE_API)
             .withAutoSharding()
-            .withTriggeringFrequency(Duration.standardSeconds(3))
+            .withTriggeringFrequency(Duration.standardSeconds(2))
             .withWriteDisposition(WriteDisposition.WRITE_APPEND)
             .withCreateDisposition(CreateDisposition.CREATE_NEVER)
             .withDefaultMissingValueInterpretation(MissingValueInterpretation.DEFAULT_VALUE)
     );
     processingStatusWriteResult.getFailedStorageApiInserts()
-        .apply("Failed "
-                + shortTableDescription
-                + " Inserts",
+        .apply("DLQ for " + shortTableDescription,
             new FailedBigQueryInsertProcessor(tableName));
   }
 
