@@ -72,10 +72,13 @@ public class MatcherTest {
     long LAST_CONTRACT_SEQ_ID = NUM_ORDERS+1;
     long LAST_SEQ_ID = (NUM_ORDERS + 1) * CONTRACTS + 1;
 
-
     // Create the matchers and context
     String sessionId = "session-1";
-    MatcherContext context = new MatcherContext(10, startTime, MAX_EVENTS/10, sessionId, 0);
+    MatcherContext context = MatcherContext.buildSimulated(sessionId, 10)
+      .withStartTimeMillis(startTime)
+      .withMaxSeconds(MAX_EVENTS/10)
+      .build();
+
     ArrayList<Matcher> matchers = new ArrayList<Matcher>();
     for (int i = 0; i < CONTRACTS; i++) {
       matchers.add(new Matcher(context, i));
@@ -94,8 +97,6 @@ public class MatcherTest {
     int seqId = 0;
     for (List<OrderBookEvent> obeList : context) {
       for (OrderBookEvent obe : obeList) {
-
-        // System.out.println(String.format("Got: %s", obe.toString()));
 
         // Check sequence ID
         seqId ++;
@@ -151,7 +152,10 @@ public class MatcherTest {
   public void endTestSimpleByLimit() {
     String sessionId = "session-1";
     int MAX_EVENTS = 20;
-    MatcherContext context = new MatcherContext(10, startTime, 0, sessionId, MAX_EVENTS);
+    MatcherContext context = MatcherContext.buildSimulated(sessionId, 10)
+      .withStartTimeMillis(startTime)
+      .withMaxEvents(MAX_EVENTS)
+      .build();
     Matcher m = new Matcher(context, 1);
 
     context.add(0, new ForeverWork(context, () -> {
@@ -184,7 +188,10 @@ public class MatcherTest {
   public void endTestSimple() {
     String sessionId = "session-1";
     int MAX_EVENTS = 10;
-    MatcherContext context = new MatcherContext(10, startTime, MAX_EVENTS/10, sessionId, 0);
+    MatcherContext context = MatcherContext.buildSimulated(sessionId, 10)
+      .withStartTimeMillis(startTime)
+      .withMaxSeconds(MAX_EVENTS/10)
+      .build();
     Matcher m = new Matcher(context, 1);
 
     // Add a bunch of orders to execute.
@@ -217,7 +224,7 @@ public class MatcherTest {
   @Test
   public void matchTest() {
     String sessionId = "session-1";
-    MatcherContext context = new MatcherContext(10, startTime, 0, sessionId, 0);
+    MatcherContext context = MatcherContext.buildSimulated(sessionId, 10).build();
     Matcher m = new Matcher(context, 1);
 
     expectMatches(m.add(context.newOrder(OrderBookEvent.Side.SELL, 100, 100)), Arrays.asList(),
@@ -243,7 +250,9 @@ public class MatcherTest {
   @Test
   public void simpleTest() {
     String sessionId = "session-1";
-    MatcherContext context = new MatcherContext(1000, startTime, 0, sessionId, 0);
+    MatcherContext context = MatcherContext.buildSimulated(sessionId, 1000)
+      .withStartTimeMillis(startTime)
+      .build();
     Matcher m = new Matcher(context, 1);
 
     // Add new sell order of q:100, p:100

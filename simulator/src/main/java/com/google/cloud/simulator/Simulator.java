@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Callable;
+import java.lang.Math;
 
 /*
  * Simulator that generates orders against a matcher.
@@ -34,19 +35,36 @@ public class Simulator {
   /**
    * Create a complex (multiple contract) simulator.
    *
-   * @param midPrice  Starting mid price for all contracts
-   * @param seed      Random seed (0 = default randomization)
+   * @param context      MatcherContext for the context of the matching engine
+   * @param numContracts Number of contracts to generate
+   * @param midPrice     Starting mid price for all contracts
+   * @param seed         Random seed (0 = default randomization)
+   * @param degreeDist   Degree of uneven distribution (0 = unform, 1 = linear, 2 = power of 2, etc)
    * @return Iterable<OrderbookEvent> -- produce OrderBookEvents from the simulator
    */
   static public Iterator<List<OrderBookEvent>> getComplexSimulator(
       MatcherContext context,
       long numContracts,
       long midPrice,
-      long seed) {
+      long seed,
+      long degreeDistribution) {
+
+    // Minimum tick
+    long minTicks = 10;
+
+    // Maximum delay -- number of ticks to wait until sending the next order
+    long maxTicks = 50;
 
     // Start all of the simulators
     for (long i = 1; i <= numContracts; i++) {
-      new Simulator(context, i, midPrice, seed);
+
+      // Calculate a number between 0 and 1 (but not one)
+      double degreeToOne = 1-Math.pow(((double)i/numContracts), degreeDistribution);
+
+      // Convert to the number of ticks
+      long orderTicks = minTicks + Math.round((maxTicks - minTicks) * degreeToOne);
+
+      new Simulator(context, i, midPrice, seed, orderTicks);
     }
 
     return context.iterator();
@@ -67,12 +85,17 @@ public class Simulator {
   private double shift = 3.0;
   private long trailingShares = 0;
   private double trailingSV = 0.0;
-  private long trailingTimeoutTicks = 50;
+
+  // Configuration for frequency of orders
+  final private long BOOK_SIZE = 20;
+  final private long trailingTimeoutTicks;
+  final private long cancelTicks;
+  final private long orderTicks;
 
   private long anchorMidprice;
   private long midprice;
 
-  private Simulator(MatcherContext context, long contractId, long midprice, long seed) {
+  private Simulator(MatcherContext context, long contractId, long midprice, long seed, long orderTicks) {
     this.anchorMidprice = midprice;
     this.midprice = midprice;
     this.m = new Matcher(context, contractId);
@@ -81,6 +104,11 @@ public class Simulator {
     } else {
       this.r = new Random();
     }
+
+    // Calculate ticks
+    this.orderTicks = orderTicks;
+    this.cancelTicks = BOOK_SIZE * orderTicks;
+    this.trailingTimeoutTicks = cancelTicks;
 
     // Queue the first task
     this.context = context;
@@ -140,7 +168,7 @@ public class Simulator {
     // Determine the Order
     final Order o = context.newOrder(side, price, qty);
     
-    context.add(1, new Callable<List<OrderBookEvent>>() {
+    context.add(orderTicks, new Callable<List<OrderBookEvent>>() {
       @Override
       public List<OrderBookEvent> call() throws Exception {
         return generateOrder();
@@ -148,7 +176,7 @@ public class Simulator {
     });
 
     // Remove the order in the future
-    context.add(50, new Callable<List<OrderBookEvent>>() {
+    context.add(orderTicks + cancelTicks, new Callable<List<OrderBookEvent>>() {
       @Override
       public List<OrderBookEvent> call() throws Exception {
         return m.remove(o);

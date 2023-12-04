@@ -16,7 +16,6 @@
 
 package com.google.cloud.orderbook;
 
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -71,6 +70,43 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
   private long totalEvents = 0;
   private long nextBucketTime;
 
+  // MatcherContextBuilder
+  public static class Builder {
+    private final String sessionId;
+    private final TimeThrottleMode mode;
+    private final long eventsPerSecond;
+    Builder(String sessionId, TimeThrottleMode mode, long eventsPerSecond) {
+      this.sessionId = sessionId;
+      this.mode = mode;
+      this.eventsPerSecond = eventsPerSecond;
+    }
+    private long startTimeMillis;
+    public Builder withStartTimeMillis(long startTimeMillis) {
+      this.startTimeMillis = startTimeMillis;
+      return this;
+    }
+    private long maxSeconds;
+    public Builder withMaxSeconds(long maxSeconds) {
+      this.maxSeconds = maxSeconds;
+      return this;
+    }
+    private long maxEvents;
+    public Builder withMaxEvents(long maxEvents) {
+      this.maxEvents = maxEvents;
+      return this;
+    }
+
+    public MatcherContext build() {
+      return new MatcherContext(
+        mode,
+        sessionId,
+        eventsPerSecond,
+        startTimeMillis,
+        maxSeconds,
+        maxEvents);
+    }
+  }
+
   /*
    * Use unthrottled event generation and the system time.
    *
@@ -79,9 +115,8 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
    *
    * Recommended for PubSub or Dataflow usage when you want to stream things as fast as you can.
    */
-  public MatcherContext(long maxSeconds, String sessionId, long maxEvents) {
-    this(TimeThrottleMode.UNTHROTTLED_EVENTS_SYSTEM_TIME, 0, System.currentTimeMillis(), maxSeconds,
-        sessionId, maxEvents);
+  static public Builder build(String sessionId) {
+    return new Builder(sessionId, TimeThrottleMode.UNTHROTTLED_EVENTS_SYSTEM_TIME, 0);
   }
 
   /*
@@ -90,10 +125,8 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
    *
    * Recommended for batch data generation (Dataflow) or testing purposes.
    */
-  public MatcherContext(long eventsPerSecond, long startTimeMillis, long maxSeconds,
-      String sessionId, long maxEvents) {
-    this(TimeThrottleMode.UNTHROTTLED_EVENTS_THROTTLED_SIMULATED_TIME, eventsPerSecond,
-        startTimeMillis, maxSeconds, sessionId, maxEvents);
+  static public Builder buildSimulated(String sessionId, long eventsPerSecond) {
+    return new Builder(sessionId, TimeThrottleMode.UNTHROTTLED_EVENTS_THROTTLED_SIMULATED_TIME, eventsPerSecond);
   }
 
   /*
@@ -101,21 +134,19 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
    *
    * Recommended for general PubSub or Dataflow usage.
    */
-  public MatcherContext(long eventsPerSecond, long maxSeconds, String sessionId, long maxEvents) {
-    this(TimeThrottleMode.THROTTLED_SYSTEM_TIME, eventsPerSecond, System.currentTimeMillis(),
-        maxSeconds, sessionId, maxEvents);
+  static public Builder buildThrottled(String sessionId, long eventsPerSecond) {
+    return new Builder(sessionId, TimeThrottleMode.THROTTLED_SYSTEM_TIME, eventsPerSecond);
   }
 
-  private MatcherContext(TimeThrottleMode mode, long eventsPerSecond, long startTimeMillis,
-      long maxSeconds, String sessionId, long maxEvents) {
+  private MatcherContext(TimeThrottleMode mode, String sessionId, long eventsPerSecond,
+                         long startTimeMillis, long maxSeconds, long maxEvents) {
     this.mode = mode;
+    this.sessionId = sessionId;
     this.eventsPerBucket = eventsPerSecond / (1000 / MILLISECOND_BUCKET_SIZE);
-    this.nextBucketTime = startTimeMillis;
     this.startTimeMillis = startTimeMillis;
+    this.nextBucketTime = startTimeMillis;
     this.maxDurationSeconds = maxSeconds;
     this.maxEvents = maxEvents;
-
-    this.sessionId = sessionId;
   }
 
   public void add(long delay, Callable<List<OrderBookEvent>> work) {

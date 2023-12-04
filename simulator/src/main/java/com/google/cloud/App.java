@@ -46,6 +46,8 @@ public class App {
 
   public static final String SEED = "seed";
 
+  public static final String DEGREE = "degree";
+
   public static final String RATE = "rate";
 
   public static final String SIM_TIME = "simtime";
@@ -68,6 +70,8 @@ public class App {
         .desc("Duration of exchange before finishing (format in ISO-8601, e.g., PT2M for 2 minutes)").type(String.class).build());
     options.addOption(Option.builder("s").hasArg(true).longOpt(SEED).optionalArg(false)
         .desc("Seed for random number generator (if deterministic)").type(Number.class).build());
+    options.addOption(Option.builder("g").hasArg(true).longOpt(DEGREE).optionalArg(false)
+        .desc("Degree for distribution of frequency of orders (0 is unform, 1 is linear, 2 for ^2, etc)").type(Number.class).build());
     options.addOption(Option.builder("c").hasArg(true).longOpt(CONTRACTS).optionalArg(false)
         .desc("Number of contracts to create (default is 1)").type(Number.class).build());
     options.addOption(Option.builder("o").hasArg(true).longOpt(ORDER_TOPIC).optionalArg(true)
@@ -98,6 +102,7 @@ public class App {
     Long maxContracts = null;
     Long eventsPerSecond = null;
     long maxSeconds = 0;
+    Long degree = null;
     boolean simtime = false;
     try {
       CommandLineParser parser = new DefaultParser();
@@ -110,6 +115,8 @@ public class App {
       }
 
       seed = (Long) line.getParsedOptionValue(SEED);
+
+      degree = (Long) line.getParsedOptionValue(DEGREE);
 
       eventsPerSecond = (Long) line.getParsedOptionValue(RATE);
 
@@ -133,10 +140,6 @@ public class App {
     try (EventConsumer eventConsumer = orderTopic == null ? new StandardOutputConsumer()
         : new PubSubConsumer(orderTopic, marketDepthTopic, region)) {
 
-//      System.out.println(
-//          "Starting simulator with max contracts=" + maxContracts + ", limit=" + limit + ", seed="
-//              + seed);
-
       runSimulator(
           (maxContracts == null) ? 1 : maxContracts,
           (limit == null) ? 0 : limit,
@@ -144,6 +147,7 @@ public class App {
           (seed == null) ? 0 : seed,
         (eventsPerSecond == null) ? 0 : eventsPerSecond,
         simtime,
+        (degree == null) ? 2 : degree,
         eventConsumer);
     }
   }
@@ -154,7 +158,7 @@ public class App {
    */
   public static void runSimulator(
     long maxContracts, long limit, long maxSeconds, long seed,
-    long eventsPerSecond, boolean simTime,
+    long eventsPerSecond, boolean simTime, long degree,
     EventConsumer eventConsumer) {
 
     String sessionId = DateTimeFormatter.ofPattern("yyyy-MM-dd.HH:mm").format(LocalDateTime.now());
@@ -163,25 +167,29 @@ public class App {
     //
     // This object governs the rate of order book events and the timestamp that is
     // recorded on them.
-    MatcherContext context;
+    MatcherContext.Builder builder;
     if (eventsPerSecond > 0) {
       if (simTime) {
-        context = new MatcherContext(eventsPerSecond, System.currentTimeMillis(), maxSeconds,
-            sessionId, limit);
+        builder = MatcherContext.buildSimulated(sessionId, eventsPerSecond);
       } else {
-        context = new MatcherContext(eventsPerSecond, maxSeconds, sessionId, limit);
+        builder = MatcherContext.buildThrottled(sessionId, eventsPerSecond);
       }
     } else {
       if (simTime) {
         System.out.println("Cannot specify simulated time with no rate!");
         System.exit(1);
       }
-      context = new MatcherContext(maxSeconds, sessionId, limit);
+      builder = MatcherContext.build(sessionId);
     }
+    if (maxSeconds > 0)
+      builder.withMaxSeconds(maxSeconds);
+    if (limit > 0)
+      builder.withMaxEvents(limit);
 
+    MatcherContext context = builder.build();
     OrderBookBuilder obb = new OrderBookBuilder();
 
-    Iterator<List<OrderBookEvent>> it = Simulator.getComplexSimulator(context, maxContracts, 100, seed);
+    Iterator<List<OrderBookEvent>> it = Simulator.getComplexSimulator(context, maxContracts, 100, seed, degree);
     while (it.hasNext()) {
       for (OrderBookEvent orderBookEvent : it.next()) {
         eventConsumer.accept(orderBookEvent);
