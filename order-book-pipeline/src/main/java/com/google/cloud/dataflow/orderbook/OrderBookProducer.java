@@ -28,7 +28,7 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 
 public class OrderBookProducer extends
-    PTransform<PCollection<OrderBookEvent>, OrderedEventProcessorResult<SessionContractKey, MarketDepth>> {
+    PTransform<PCollection<OrderBookEvent>, OrderedEventProcessorResult<SessionContractKey, MarketDepth, OrderBookEvent>> {
 
   private final int depth;
   private final boolean withTrade;
@@ -52,7 +52,7 @@ public class OrderBookProducer extends
   }
 
   @Override
-  public OrderedEventProcessorResult<SessionContractKey, MarketDepth> expand(
+  public OrderedEventProcessorResult<SessionContractKey, MarketDepth, OrderBookEvent> expand(
       PCollection<OrderBookEvent> input) {
     Coder<OrderBookEvent> eventCoder = ProtoCoder.of(OrderBookEvent.class);
     Coder<OrderBookMutableState> stateCoder = OrderBookCoder.of();

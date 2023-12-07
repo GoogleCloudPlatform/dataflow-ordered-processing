@@ -97,7 +97,7 @@ public class OrderBookProcessingPipeline {
         PubsubIO.readProtos(
             OrderBookEvent.class).fromSubscription(options.getSubscription()));
 
-    OrderedEventProcessorResult<SessionContractKey, MarketDepth> processingResults = orderBookEvents
+    OrderedEventProcessorResult<SessionContractKey, MarketDepth, OrderBookEvent> processingResults = orderBookEvents
         .apply("Build Order Book", new OrderBookProducer(
             options.getOrderBookDepth(),
             options.isIncludeLastTrade()).produceStatusUpdatesOnEveryEvent());

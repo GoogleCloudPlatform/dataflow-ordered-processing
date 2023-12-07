@@ -79,7 +79,7 @@ public class OrderBookProcessingPipelineTest {
 
     PCollection<OrderBookEvent> events = p.apply("Input", Create.of(inputEvents));
 
-    OrderedEventProcessorResult<SessionContractKey, MarketDepth> orderedProcessingResult = events.apply(
+    OrderedEventProcessorResult<SessionContractKey, MarketDepth, OrderBookEvent> orderedProcessingResult = events.apply(
         "Process in order", new OrderBookProducer(depth, withTrade));
 
     PCollection<KV<SessionContractKey, MarketDepth>> marketDepthResults = orderedProcessingResult.output();
@@ -216,7 +216,7 @@ public class OrderBookProcessingPipelineTest {
 
     PCollection<OrderBookEvent> events = p.apply("Input", messageFlow.advanceWatermarkToInfinity());
 
-    OrderedEventProcessorResult<SessionContractKey, MarketDepth> orderedProcessingResult = events.apply(
+    OrderedEventProcessorResult<SessionContractKey, MarketDepth, OrderBookEvent> orderedProcessingResult = events.apply(
         "Process in order",
         new OrderBookProducer(depth, withTrade).produceStatusUpdatesOnEveryEvent()
             .produceStatusUpdatesInSeconds(-1));
