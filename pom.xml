@@ -37,8 +37,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>17</maven.compiler.source>
-    <maven.compiler.target>17</maven.compiler.target>
+    <maven.compiler.release>11</maven.compiler.release>
     <beam.version>2.52.0</beam.version>
     <autovalue.version>1.10.4</autovalue.version>
     <junit.version>4.13.2</junit.version>

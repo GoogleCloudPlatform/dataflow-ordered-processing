@@ -18,7 +18,7 @@ package org.apache.beam.sdk.extensions.ordered;
 
 import java.io.Serializable;
 
-public interface EventExaminer<Event, State> extends Serializable {
+public interface EventExaminer<Event, State extends MutableState> extends Serializable {
 
   boolean isInitialEvent(long sequenceNumber, Event event);
 

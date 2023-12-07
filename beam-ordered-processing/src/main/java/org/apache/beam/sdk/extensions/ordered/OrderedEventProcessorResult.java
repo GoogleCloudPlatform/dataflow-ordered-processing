@@ -32,30 +32,33 @@ import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.Immuta
  * <li>output - the key/value of the mutated states</li>
  * <li>processingStatuses - the key/value of the status of processing for a particular key</li>
  *
- * @param <KeyT>
- * @param <ResultT>
+ * @param <Key>
+ * @param <Result>
  */
 
-public class OrderedEventProcessorResult<KeyT, ResultT> implements POutput {
+public class OrderedEventProcessorResult<Key, Result, Event> implements POutput {
 
-  private final PCollection<KV<KeyT, ResultT>> outputPCollection;
-  private final TupleTag<KV<KeyT, ResultT>> outputPCollectionTupleTag;
+  private final PCollection<KV<Key, Result>> outputPCollection;
+  private final TupleTag<KV<Key, Result>> outputPCollectionTupleTag;
 
-  private final PCollection<KV<KeyT, OrderedProcessingStatus>> eventProcessingStatusPCollection;
-  private final TupleTag<KV<KeyT, OrderedProcessingStatus>> eventProcessingStatusTupleTag;
+  private final PCollection<KV<Key, OrderedProcessingStatus>> eventProcessingStatusPCollection;
+  private final TupleTag<KV<Key, OrderedProcessingStatus>> eventProcessingStatusTupleTag;
 
-  private final PCollection<KV<KeyT, OrderedProcessingDiagnosticEvent>> diagnosticsEventPCollection;
-  private final TupleTag<KV<KeyT, OrderedProcessingDiagnosticEvent>> diagnosticsTupleTag;
+  private final PCollection<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticsEventPCollection;
+  private final TupleTag<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticsTupleTag;
 
+  private final PCollection<KV<Key, KV<Long, UnprocessedEvent<Event>>>> unprocessedEventPCollection;
+  private final TupleTag<KV<Key, KV<Long, UnprocessedEvent<Event>>>> unprocessedEventTupleTag;
 
   OrderedEventProcessorResult(Pipeline pipeline,
-      PCollection<KV<KeyT, ResultT>> outputPCollection,
-      TupleTag<KV<KeyT, ResultT>> outputPCollectionTupleTag,
-      PCollection<KV<KeyT, OrderedProcessingStatus>> eventProcessingStatusPCollection,
-      TupleTag<KV<KeyT, OrderedProcessingStatus>> eventProcessingStatusTupleTag,
-      PCollection<KV<KeyT, OrderedProcessingDiagnosticEvent>> diagnosticsEventPCollection,
-      TupleTag<KV<KeyT, OrderedProcessingDiagnosticEvent>> diagnosticsEventTupleTag
-  ) {
+      PCollection<KV<Key, Result>> outputPCollection,
+      TupleTag<KV<Key, Result>> outputPCollectionTupleTag,
+      PCollection<KV<Key, OrderedProcessingStatus>> eventProcessingStatusPCollection,
+      TupleTag<KV<Key, OrderedProcessingStatus>> eventProcessingStatusTupleTag,
+      PCollection<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticsEventPCollection,
+      TupleTag<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticsEventTupleTag,
+      PCollection<KV<Key, KV<Long, UnprocessedEvent<Event>>>> unprocessedEventPCollection,
+      TupleTag<KV<Key, KV<Long, UnprocessedEvent<Event>>>> unprocessedEventTupleTag) {
     this.outputPCollection = outputPCollection;
     this.outputPCollectionTupleTag = outputPCollectionTupleTag;
     this.eventProcessingStatusPCollection = eventProcessingStatusPCollection;
@@ -64,6 +67,8 @@ public class OrderedEventProcessorResult<KeyT, ResultT> implements POutput {
     this.diagnosticsTupleTag = diagnosticsEventTupleTag;
 
     this.pipeline = pipeline;
+    this.unprocessedEventPCollection = unprocessedEventPCollection;
+    this.unprocessedEventTupleTag = unprocessedEventTupleTag;
   }
 
   private final Pipeline pipeline;
@@ -88,18 +93,22 @@ public class OrderedEventProcessorResult<KeyT, ResultT> implements POutput {
    * @return processing status for a particular key. The elements will have the timestamp of the
    * instant the status was emitted.
    */
-  public PCollection<KV<KeyT, OrderedProcessingStatus>> processingStatuses() {
+  public PCollection<KV<Key, OrderedProcessingStatus>> processingStatuses() {
     return eventProcessingStatusPCollection;
   }
 
   /**
    * @return processed states keyed by the original key
    */
-  public PCollection<KV<KeyT, ResultT>> output() {
+  public PCollection<KV<Key, Result>> output() {
     return outputPCollection;
   }
 
-  public PCollection<KV<KeyT, OrderedProcessingDiagnosticEvent>> diagnosticEvents() {
+  public PCollection<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticEvents() {
     return diagnosticsEventPCollection;
+  }
+
+  public PCollection<KV<Key, KV<Long, UnprocessedEvent<Event>>>> unprocessedEvents() {
+    return unprocessedEventPCollection;
   }
 }

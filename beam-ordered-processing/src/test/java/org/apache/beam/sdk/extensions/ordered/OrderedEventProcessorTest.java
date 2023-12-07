@@ -31,6 +31,7 @@ import org.apache.beam.sdk.coders.DefaultCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.beam.sdk.coders.VarLongCoder;
+import org.apache.beam.sdk.extensions.ordered.UnprocessedEvent.Reason;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 import org.apache.beam.sdk.testing.PAssert;
@@ -50,6 +51,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+/**
+ * TODO: add tests for outputting buffered events in case of drainage.
+ */
 @RunWith(JUnit4.class)
 public class OrderedEventProcessorTest {
 
@@ -310,17 +314,27 @@ public class OrderedEventProcessorTest {
         Event.create(1, "id-1", "b"),
         Event.create(3, "id-1", "d"),
     };
+    int resultCount = 4;
+    int duplicateCount = 4;
+
+    KV[] duplicates = {
+        KV.of("id-1", KV.of(3L, UnprocessedEvent.create("d", Reason.duplicate))),
+        KV.of("id-1", KV.of(3L, UnprocessedEvent.create("d", Reason.duplicate))),
+        KV.of("id-1", KV.of(1L, UnprocessedEvent.create("b", Reason.duplicate))),
+        KV.of("id-1", KV.of(3L, UnprocessedEvent.create("d", Reason.duplicate)))
+    };
     testProcessing(events,
         new KV[]{
             KV.of("id-1",
-                OrderedProcessingStatus.create(3L, 0, null, null, events.length, 4, 4, false))
+                OrderedProcessingStatus.create(3L, 0, null, null, events.length, resultCount,
+                    duplicateCount, false))
         },
         new KV[]{
             KV.of("id-1", "a"),
             KV.of("id-1", "ab"),
             KV.of("id-1", "abc"),
             KV.of("id-1", "abcd"),
-        }, 1, 0, 1000, false);
+        }, duplicates, 1, 0, 1000, false);
   }
 
   @Test
@@ -505,11 +519,26 @@ public class OrderedEventProcessorTest {
         }, 1, 0, 1000, false);
   }
 
-  private void testProcessing(Event[] events, KV[] expectedStatuses,
+  private void testProcessing(
+      Event[] events,
+      KV[] expectedStatuses,
       KV<String, String>[] expectedOutput,
       int emissionFrequency, long initialSequence, int maxResultsPerOutput,
+      boolean produceStatusOnEveryEvent) throws CannotProvideCoderException {
+    testProcessing(events, expectedStatuses, expectedOutput, new KV[0] /* no duplicates */,
+        emissionFrequency,
+        initialSequence, maxResultsPerOutput, produceStatusOnEveryEvent);
+
+  }
+
+  private void testProcessing(
+      Event[] events,
+      KV[] expectedStatuses,
+      KV<String, String>[] expectedOutput,
+      KV[] expectedDuplicates,
+      int emissionFrequency, long initialSequence, int maxResultsPerOutput,
       boolean produceStatusOnEveryEvent)
-      throws @UnknownKeyFor @NonNull @Initialized CannotProvideCoderException {
+      throws CannotProvideCoderException {
     Instant now = Instant.now().minus(Duration.standardMinutes(20));
     TestStream.Builder<Event> messageFlow = TestStream.create(
         p.getCoderRegistry().getCoder(Event.class)).advanceWatermarkTo(now);
@@ -544,16 +573,20 @@ public class OrderedEventProcessorTest {
       orderedEventProcessor = orderedEventProcessor.withStatusUpdateFrequencySeconds(300);
     }
 
-    OrderedEventProcessorResult<String, String> orderedProcessing = input.apply("Process Events",
+    OrderedEventProcessorResult<String, String, String> processingResult = input.apply(
+        "Process Events",
         orderedEventProcessor);
 
-    PCollection<KV<String, String>> output = orderedProcessing.output();
-    PAssert.that("Output", output).containsInAnyOrder(expectedOutput);
+    PAssert.that("Output", processingResult.output()).containsInAnyOrder(expectedOutput);
 
-    PCollection<KV<String, OrderedProcessingStatus>> processingStatuses = orderedProcessing.processingStatuses();
-    PAssert.that("Statuses", processingStatuses).containsInAnyOrder(expectedStatuses);
+    PAssert.that("Statuses", processingResult.processingStatuses())
+        .containsInAnyOrder(expectedStatuses);
+
+    PAssert.that("Unprocessed events", processingResult.unprocessedEvents())
+        .containsInAnyOrder(expectedDuplicates);
 
     p.run();
   }
+
 }
 
