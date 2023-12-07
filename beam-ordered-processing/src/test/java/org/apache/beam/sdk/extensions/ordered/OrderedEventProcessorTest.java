@@ -562,7 +562,7 @@ public class OrderedEventProcessorTest {
 
     OrderedEventProcessor<String, String, String, StringBufferState> orderedEventProcessor = OrderedEventProcessor.create(
             new StringBufferEventExaminer(initialSequence, emissionFrequency),
-            eventCoder, stateCoder, keyCoder, resultCoder)
+            eventCoder, keyCoder, stateCoder, resultCoder)
         .withMaxResultsPerOutput(maxResultsPerOutput);
 
     if (produceStatusOnEveryEvent) {

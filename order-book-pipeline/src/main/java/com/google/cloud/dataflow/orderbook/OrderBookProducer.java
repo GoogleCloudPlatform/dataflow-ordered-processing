@@ -54,7 +54,6 @@ public class OrderBookProducer extends
   @Override
   public OrderedEventProcessorResult<SessionContractKey, MarketDepth, OrderBookEvent> expand(
       PCollection<OrderBookEvent> input) {
-    Coder<OrderBookEvent> eventCoder = ProtoCoder.of(OrderBookEvent.class);
     Coder<OrderBookMutableState> stateCoder = OrderBookCoder.of();
     Coder<SessionContractKey> keyCoder = SessionContractKeyCoder.of();
     Coder<MarketDepth> marketDepthCoder = ProtoCoder.of(MarketDepth.class);
@@ -65,9 +64,8 @@ public class OrderBookProducer extends
     OrderedEventProcessor<OrderBookEvent, SessionContractKey, MarketDepth, OrderBookMutableState> orderedProcessor =
         OrderedEventProcessor.create(
                 new OrderBookEventExaminer(depth, withTrade),
-                eventCoder,
-                stateCoder,
-                keyCoder, marketDepthCoder)
+                keyCoder, stateCoder,
+                marketDepthCoder)
             .withMaxResultsPerOutput(10000);
     if (produceStatusUpdatesOnEveryEvent) {
       orderedProcessor = orderedProcessor.produceStatusUpdatesOnEveryEvent(true);

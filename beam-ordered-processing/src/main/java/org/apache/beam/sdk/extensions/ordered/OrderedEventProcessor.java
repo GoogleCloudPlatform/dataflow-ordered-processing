@@ -18,6 +18,7 @@ package org.apache.beam.sdk.extensions.ordered;
 import com.google.auto.value.AutoValue;
 import java.util.Arrays;
 import java.util.Iterator;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.BooleanCoder;
 import org.apache.beam.sdk.coders.Coder;
@@ -77,23 +78,34 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
   private static final boolean DEFAULT_PRODUCE_STATUS_UPDATE_ON_EVERY_EVENT = false;
   public static final int DEFAULT_MAX_ELEMENTS_TO_OUTPUT = 10_000;
 
+
+  public static <EventType, KeyType, ResultType, StateType extends MutableState<EventType, ResultType>> OrderedEventProcessor<EventType, KeyType, ResultType, StateType> create(
+      EventExaminer<EventType, StateType> eventExaminer, Coder<KeyType> keyCoder,
+      Coder<StateType> stateCoder, Coder<ResultType> resultTypeCoder) {
+    return new AutoValue_OrderedEventProcessor<>(eventExaminer, null /* no event coder */,
+        stateCoder, keyCoder, resultTypeCoder,
+        DEFAULT_STATUS_UPDATE_FREQUENCY_SECONDS, DEFAULT_PRODUCE_STATUS_UPDATE_ON_EVERY_EVENT,
+        DEFAULT_PRODUCE_DIAGNOSTIC_EVENTS, DEFAULT_MAX_ELEMENTS_TO_OUTPUT);
+  }
+
   /**
    * Default constructor method
    *
-   * @param eventCoder   coder for the Event class
-   * @param stateCoder   coder for the State class
-   * @param keyTypeCoder coder for the Key class
    * @param <EventType>
    * @param <KeyType>
    * @param <StateType>
+   * @param eventCoder  coder for the Event class
+   * @param keyCoder    coder for the Key class
+   * @param stateCoder  coder for the State class
+   * @param resultCoder
    * @return
    */
   public static <EventType, KeyType, ResultType, StateType extends MutableState<EventType, ResultType>> OrderedEventProcessor<EventType, KeyType, ResultType, StateType> create(
       EventExaminer<EventType, StateType> eventExaminer, Coder<EventType> eventCoder,
-      Coder<StateType> stateCoder, Coder<KeyType> keyTypeCoder, Coder<ResultType> resultTypeCoder) {
+      Coder<KeyType> keyCoder, Coder<StateType> stateCoder, Coder<ResultType> resultCoder) {
     // TODO: none of the values are marked as @Nullable and the transform will fail if nulls are provided. But need a better error messaging.
     return new AutoValue_OrderedEventProcessor<>(eventExaminer, eventCoder,
-        stateCoder, keyTypeCoder, resultTypeCoder,
+        stateCoder, keyCoder, resultCoder,
         DEFAULT_STATUS_UPDATE_FREQUENCY_SECONDS, DEFAULT_PRODUCE_STATUS_UPDATE_ON_EVERY_EVENT,
         DEFAULT_PRODUCE_DIAGNOSTIC_EVENTS, DEFAULT_MAX_ELEMENTS_TO_OUTPUT);
   }
@@ -150,10 +162,12 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
 
   abstract EventExaminer<Event, State> getEventExaminer();
 
+  @Nullable
   abstract Coder<Event> getEventCoder();
 
   abstract Coder<State> getStateCoder();
 
+  @Nullable
   abstract Coder<Key> getKeyCoder();
 
   abstract Coder<Result> getResultCoder();
@@ -183,8 +197,18 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
     };
 
     Coder<Key> keyCoder = getKeyCoder();
+    if (keyCoder == null) {
+      // Assume that the default key coder is used and use the key coder from it.
+      keyCoder = ((KvCoder<Key, KV<Long, Event>>) input.getCoder()).getKeyCoder();
+    }
+
+    Coder<Event> eventCoder = getEventCoder();
+    if (eventCoder == null) {
+      // Assume that the default key coder is used and use the event coder from it.
+      eventCoder = ((KvCoder<Long, Event>) ((KvCoder<Key, KV<Long, Event>>) input.getCoder()).getValueCoder()).getValueCoder();
+    }
     PCollectionTuple processingResult = input.apply(ParDo.of(
-        new OrderedProcessorDoFn<>(getEventExaminer(), getEventCoder(),
+        new OrderedProcessorDoFn<>(getEventExaminer(), eventCoder,
             getStateCoder(),
             keyCoder, mainOutput, statusOutput,
             getStatusUpdateFrequencySeconds() <= 0 ? null
@@ -201,7 +225,7 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
     KvCoder<Key, OrderedProcessingDiagnosticEvent> diagnosticOutputCoder = KvCoder.of(keyCoder,
         getOrderedProcessingDiagnosticsCoder(input.getPipeline()));
     KvCoder<Key, KV<Long, UnprocessedEvent<Event>>> unprocessedEventsCoder = KvCoder.of(keyCoder,
-        KvCoder.of(VarLongCoder.of(), new UnprocessedEventCoder<>(getEventCoder())));
+        KvCoder.of(VarLongCoder.of(), new UnprocessedEventCoder<>(eventCoder)));
     return new OrderedEventProcessorResult<>(
         input.getPipeline(),
         processingResult.get(mainOutput).setCoder(mainOutputCoder),
