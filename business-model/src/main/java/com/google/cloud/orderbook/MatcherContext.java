@@ -23,7 +23,7 @@ import com.google.cloud.orderbook.model.OrderBookEvent;
 import com.google.cloud.orderbook.model.OrderBookEvent.Side;
 
 public class MatcherContext implements Iterable<List<OrderBookEvent>> {
-  
+ 
   enum TimeThrottleMode {
     /* Generate OrderBookEvents without throttling (no sleep),
      * and use the system time for the order events.
@@ -47,8 +47,11 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
   // Queued producer -- used to synchronise the output of the matchers
   final private QueuedProducer<OrderBookEvent> que = new QueuedProducer<>();
 
+  // Minimum rate for simulated time (events per second)
+  final private static long MINIMUM_RATE = 10;
+
   // Number of milliseconds in a bucket for throttling
-  final private static long MILLISECOND_BUCKET_SIZE = 100;
+  final private static long MILLISECOND_BUCKET_SIZE = 1000/MINIMUM_RATE;
 
   // Throttling mode and number of events per second we expect
   final private TimeThrottleMode mode;
@@ -79,6 +82,11 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
       this.sessionId = sessionId;
       this.mode = mode;
       this.eventsPerSecond = eventsPerSecond;
+
+      if (eventsPerSecond > 0 && eventsPerSecond < MINIMUM_RATE) {
+        throw new RuntimeException(
+          String.format("Event rate must be at least %d", MINIMUM_RATE));
+      }
     }
     private long startTimeMillis;
     public Builder withStartTimeMillis(long startTimeMillis) {

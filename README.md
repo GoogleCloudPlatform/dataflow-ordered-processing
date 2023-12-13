@@ -54,7 +54,7 @@ This will start a simulator which will be generating synthetic orders and expect
 events:
 
 ```shell
-./start-simulator.sh
+./start-pubsub-simulator.sh
 ```
 
 ## Analyse the data

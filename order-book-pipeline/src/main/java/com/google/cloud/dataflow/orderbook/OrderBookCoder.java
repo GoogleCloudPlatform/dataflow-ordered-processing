@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.coders.BooleanCoder;
 import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.MapCoder;
 import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.beam.sdk.coders.VarLongCoder;
@@ -37,7 +36,7 @@ import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 public class OrderBookCoder extends Coder<OrderBookMutableState> {
   private VarIntCoder intCoder = VarIntCoder.of();
   private BooleanCoder booleanCoder = BooleanCoder.of();
-  private MapCoder mapCoder = MapCoder.of(VarLongCoder.of(), VarLongCoder.of());
+  private MapCoder<Long, Long> mapCoder = MapCoder.of(VarLongCoder.of(), VarLongCoder.of());
 
   private Coder<OrderBookEvent> orderBookEventCoder = ProtoCoder.of(OrderBookEvent.class);
 
