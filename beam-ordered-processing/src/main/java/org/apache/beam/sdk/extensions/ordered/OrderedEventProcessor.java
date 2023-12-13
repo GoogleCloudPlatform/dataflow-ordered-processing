@@ -65,13 +65,13 @@ import org.slf4j.LoggerFactory;
  * and reprocessed when new events for a given key arrived.
  *
  * @param <Event>
- * @param <Key>
+ * @param <EventKey>
  * @param <State>
  */
 @AutoValue
 @SuppressWarnings({"nullness", "TypeNameShadowing"})
-public abstract class OrderedEventProcessor<Event, Key, Result, State extends MutableState<Event, Result>> extends
-    PTransform<PCollection<KV<Key, KV<Long, Event>>>, OrderedEventProcessorResult<Key, Result, Event>> {
+public abstract class OrderedEventProcessor<Event, EventKey, Result, State extends MutableState<Event, Result>> extends
+    PTransform<PCollection<KV<EventKey, KV<Long, Event>>>, OrderedEventProcessorResult<EventKey, Result, Event>> {
 
   public static final int DEFAULT_STATUS_UPDATE_FREQUENCY_SECONDS = 5;
   public static final boolean DEFAULT_PRODUCE_DIAGNOSTIC_EVENTS = false;
@@ -118,7 +118,7 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
    * @return
    */
 
-  public OrderedEventProcessor<Event, Key, Result, State> withStatusUpdateFrequencySeconds(
+  public OrderedEventProcessor<Event, EventKey, Result, State> withStatusUpdateFrequencySeconds(
       int seconds) {
     return new AutoValue_OrderedEventProcessor<>(
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
@@ -127,7 +127,7 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
         this.getMaxNumberOfResultsPerOutput());
   }
 
-  public OrderedEventProcessor<Event, Key, Result, State> produceDiagnosticEvents(
+  public OrderedEventProcessor<Event, EventKey, Result, State> produceDiagnosticEvents(
       boolean produceDiagnosticEvents) {
     return new AutoValue_OrderedEventProcessor<>(
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
@@ -142,7 +142,7 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
    *
    * @return
    */
-  public OrderedEventProcessor<Event, Key, Result, State> produceStatusUpdatesOnEveryEvent(
+  public OrderedEventProcessor<Event, EventKey, Result, State> produceStatusUpdatesOnEveryEvent(
       boolean value) {
     return new AutoValue_OrderedEventProcessor<>(
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
@@ -151,7 +151,7 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
         this.getMaxNumberOfResultsPerOutput());
   }
 
-  public OrderedEventProcessor<Event, Key, Result, State> withMaxResultsPerOutput(
+  public OrderedEventProcessor<Event, EventKey, Result, State> withMaxResultsPerOutput(
       long maxResultsPerOutput) {
     return new AutoValue_OrderedEventProcessor<>(
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
@@ -168,7 +168,7 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
   abstract Coder<State> getStateCoder();
 
   @Nullable
-  abstract Coder<Key> getKeyCoder();
+  abstract Coder<EventKey> getKeyCoder();
 
   abstract Coder<Result> getResultCoder();
 
@@ -181,32 +181,33 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
   abstract long getMaxNumberOfResultsPerOutput();
 
   @Override
-  public OrderedEventProcessorResult<Key, Result, Event> expand(
-      PCollection<KV<Key, KV<Long, Event>>> input) {
-    final TupleTag<KV<Key, Result>> mainOutput = new TupleTag<>("mainOutput") {
+  public OrderedEventProcessorResult<EventKey, Result, Event> expand(
+      PCollection<KV<EventKey, KV<Long, Event>>> input) {
+    final TupleTag<KV<EventKey, Result>> mainOutput = new TupleTag<>("mainOutput") {
     };
-    final TupleTag<KV<Key, OrderedProcessingStatus>> statusOutput = new TupleTag<>("status") {
+    final TupleTag<KV<EventKey, OrderedProcessingStatus>> statusOutput = new TupleTag<>("status") {
     };
 
-    final TupleTag<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticOutput = new TupleTag<>(
+    final TupleTag<KV<EventKey, OrderedProcessingDiagnosticEvent>> diagnosticOutput = new TupleTag<>(
         "diagnostics") {
     };
 
-    final TupleTag<KV<Key, KV<Long, UnprocessedEvent<Event>>>> unprocessedEventOutput = new TupleTag<>(
+    final TupleTag<KV<EventKey, KV<Long, UnprocessedEvent<Event>>>> unprocessedEventOutput = new TupleTag<>(
         "unprocessed-events") {
     };
 
-    Coder<Key> keyCoder = getKeyCoder();
+    Coder<EventKey> keyCoder = getKeyCoder();
     if (keyCoder == null) {
       // Assume that the default key coder is used and use the key coder from it.
-      keyCoder = ((KvCoder<Key, KV<Long, Event>>) input.getCoder()).getKeyCoder();
+      keyCoder = ((KvCoder<EventKey, KV<Long, Event>>) input.getCoder()).getKeyCoder();
     }
 
     Coder<Event> eventCoder = getEventCoder();
     if (eventCoder == null) {
       // Assume that the default key coder is used and use the event coder from it.
-      eventCoder = ((KvCoder<Long, Event>) ((KvCoder<Key, KV<Long, Event>>) input.getCoder()).getValueCoder()).getValueCoder();
+      eventCoder = ((KvCoder<Long, Event>) ((KvCoder<EventKey, KV<Long, Event>>) input.getCoder()).getValueCoder()).getValueCoder();
     }
+
     PCollectionTuple processingResult = input.apply(ParDo.of(
         new OrderedProcessorDoFn<>(getEventExaminer(), eventCoder,
             getStateCoder(),
@@ -217,14 +218,14 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
             isProduceDiagnosticEvents(), isProduceStatusUpdateOnEveryEvent(),
             input.isBounded() == IsBounded.BOUNDED ? Integer.MAX_VALUE
                 : getMaxNumberOfResultsPerOutput())).withOutputTags(mainOutput,
-        TupleTagList.of(Arrays.asList(statusOutput, diagnosticOutput, unprocessedEventOutput))));
+          TupleTagList.of(Arrays.asList(statusOutput, diagnosticOutput, unprocessedEventOutput))));
 
-    KvCoder<Key, Result> mainOutputCoder = KvCoder.of(keyCoder, getResultCoder());
-    KvCoder<Key, OrderedProcessingStatus> processingStatusCoder = KvCoder.of(keyCoder,
+    KvCoder<EventKey, Result> mainOutputCoder = KvCoder.of(keyCoder, getResultCoder());
+    KvCoder<EventKey, OrderedProcessingStatus> processingStatusCoder = KvCoder.of(keyCoder,
         getOrderedProcessingStatusCoder(input.getPipeline()));
-    KvCoder<Key, OrderedProcessingDiagnosticEvent> diagnosticOutputCoder = KvCoder.of(keyCoder,
+    KvCoder<EventKey, OrderedProcessingDiagnosticEvent> diagnosticOutputCoder = KvCoder.of(keyCoder,
         getOrderedProcessingDiagnosticsCoder(input.getPipeline()));
-    KvCoder<Key, KV<Long, UnprocessedEvent<Event>>> unprocessedEventsCoder = KvCoder.of(keyCoder,
+    KvCoder<EventKey, KV<Long, UnprocessedEvent<Event>>> unprocessedEventsCoder = KvCoder.of(keyCoder,
         KvCoder.of(VarLongCoder.of(), new UnprocessedEventCoder<>(eventCoder)));
     return new OrderedEventProcessorResult<>(
         input.getPipeline(),
@@ -271,11 +272,11 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
    * Main DoFn for processing ordered events
    *
    * @param <Event>
-   * @param <Key>
+   * @param <EventKey>
    * @param <State>
    */
-  static class OrderedProcessorDoFn<Event, Key, Result, State extends MutableState<Event, Result>> extends
-      DoFn<KV<Key, KV<Long, Event>>, KV<Key, Result>> {
+  static class OrderedProcessorDoFn<Event, EventKey, Result, State extends MutableState<Event, Result>> extends
+      DoFn<KV<EventKey, KV<Long, Event>>, KV<EventKey, Result>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(OrderedProcessorDoFn.class);
 
@@ -293,7 +294,7 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
 
     @StateId(PROCESSING_STATE)
     @SuppressWarnings("unused")
-    private final StateSpec<ValueState<ProcessingState<Key>>> processingStateSpec;
+    private final StateSpec<ValueState<ProcessingState<EventKey>>> processingStateSpec;
 
     @SuppressWarnings("unused")
     @StateId(MUTABLE_STATE)
@@ -311,12 +312,12 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
     @SuppressWarnings("unused")
     private final TimerSpec largeBatchEmissionTimer = TimerSpecs.timer(TimeDomain.EVENT_TIME);
 
-    private final TupleTag<KV<Key, OrderedProcessingStatus>> statusTupleTag;
+    private final TupleTag<KV<EventKey, OrderedProcessingStatus>> statusTupleTag;
     private final Duration statusUpdateFrequency;
 
-    private final TupleTag<KV<Key, Result>> mainOutputTupleTag;
-    private final TupleTag<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticEventsTupleTag;
-    private final TupleTag<KV<Key, KV<Long, UnprocessedEvent<Event>>>> unprocessedEventsTupleTag;
+    private final TupleTag<KV<EventKey, Result>> mainOutputTupleTag;
+    private final TupleTag<KV<EventKey, OrderedProcessingDiagnosticEvent>> diagnosticEventsTupleTag;
+    private final TupleTag<KV<EventKey, KV<Long, UnprocessedEvent<Event>>>> unprocessedEventsTupleTag;
     private final boolean produceDiagnosticEvents;
     private final boolean produceStatusUpdateOnEveryEvent;
 
@@ -330,20 +331,20 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
      * @param eventCoder
      * @param stateCoder
      * @param keyCoder
-     * @param statusTupleTag
+     * @param statusOutput
      * @param statusUpdateFrequency
-     * @param diagnosticEventsTupleTag
+     * @param diagnosticOutput
      * @param produceDiagnosticEvents
      * @param produceStatusUpdateOnEveryEvent
      * @param maxNumberOfResultsToProduce
      */
     OrderedProcessorDoFn(
         EventExaminer<Event, State> eventExaminer, Coder<Event> eventCoder,
-        Coder<State> stateCoder, Coder<Key> keyCoder,
-        TupleTag<KV<Key, Result>> mainOutputTupleTag,
-        TupleTag<KV<Key, OrderedProcessingStatus>> statusTupleTag, Duration statusUpdateFrequency,
-        TupleTag<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticEventsTupleTag,
-        TupleTag<KV<Key, KV<Long, UnprocessedEvent<Event>>>> unprocessedEventsTupleTag,
+        Coder<State> stateCoder, Coder<EventKey> keyCoder,
+        TupleTag<KV<EventKey, Result>> mainOutputTupleTag,
+        TupleTag<KV<EventKey, OrderedProcessingStatus>> statusTupleTag, Duration statusUpdateFrequency,
+        TupleTag<KV<EventKey, OrderedProcessingDiagnosticEvent>> diagnosticEventsTupleTag,
+        TupleTag<KV<EventKey, KV<Long, UnprocessedEvent<Event>>>> unprocessedEventTupleTag,
         boolean produceDiagnosticEvents, boolean produceStatusUpdateOnEveryEvent,
         long maxNumberOfResultsToProduce) {
       this.eventExaminer = eventExaminer;
@@ -353,7 +354,7 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
       this.windowClosedSpec = StateSpecs.value(BooleanCoder.of());
       this.mainOutputTupleTag = mainOutputTupleTag;
       this.statusTupleTag = statusTupleTag;
-      this.unprocessedEventsTupleTag = unprocessedEventsTupleTag;
+      this.unprocessedEventsTupleTag = unprocessedEventTupleTag;
       this.statusUpdateFrequency = statusUpdateFrequency;
       this.diagnosticEventsTupleTag = diagnosticEventsTupleTag;
       this.produceDiagnosticEvents = produceDiagnosticEvents;
@@ -375,11 +376,11 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
     @ProcessElement
     public void processElement(
         @StateId(BUFFERED_EVENTS) OrderedListState<Event> bufferedEventsState,
-        @AlwaysFetched @StateId(PROCESSING_STATE) ValueState<ProcessingState<Key>> processingStateState,
+        @AlwaysFetched @StateId(PROCESSING_STATE) ValueState<ProcessingState<EventKey>> processingStateState,
         @StateId(MUTABLE_STATE) ValueState<State> mutableStateState,
         @TimerId(STATUS_EMISSION_TIMER) Timer statusEmissionTimer,
         @TimerId(LARGE_BATCH_EMISSION_TIMER) Timer largeBatchEmissionTimer,
-        @Element KV<Key, KV<Long, Event>> eventAndSequence,
+        @Element KV<EventKey, KV<Long, Event>> eventAndSequence,
         MultiOutputReceiver outputReceiver,
         BoundedWindow window) {
 
@@ -387,13 +388,13 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
       OrderedProcessingDiagnosticEvent.Builder diagnostics = OrderedProcessingDiagnosticEvent.builder();
       diagnostics.setProcessingTime(Instant.now());
 
-      Key key = eventAndSequence.getKey();
+      EventKey key = eventAndSequence.getKey();
       long sequence = eventAndSequence.getValue().getKey();
       Event event = eventAndSequence.getValue().getValue();
 
       diagnostics.setSequenceNumber(sequence);
 
-      ProcessingState<Key> processingState = processingStateState.read();
+      ProcessingState<EventKey> processingState = processingStateState.read();
 
       if (processingState == null) {
         // This is the first time we see this key/window pair
@@ -424,7 +425,7 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
       checkIfProcessingIsCompleted(processingState);
     }
 
-    private boolean checkIfProcessingIsCompleted(ProcessingState<Key> processingState) {
+    private boolean checkIfProcessingIsCompleted(ProcessingState<EventKey> processingState) {
       boolean result = processingState.isProcessingCompleted();
       if (result) {
         LOG.info("Processing for key '" + processingState.getKey() + "' is completed.");
@@ -433,9 +434,9 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
     }
 
     private void saveStatesAndOutputDiagnostics(
-        ValueState<ProcessingState<Key>> processingStatusState,
-        ProcessingState<Key> processingStatus, ValueState<State> currentStateState, State state,
-        MultiOutputReceiver outputReceiver, Builder diagnostics, Key key, Instant windowTimestamp) {
+        ValueState<ProcessingState<EventKey>> processingStatusState,
+        ProcessingState<EventKey> processingStatus, ValueState<State> currentStateState, State state,
+        MultiOutputReceiver outputReceiver, Builder diagnostics, EventKey key, Instant windowTimestamp) {
       // There is always a change to the processing status
       processingStatusState.write(processingStatus);
 
@@ -459,7 +460,7 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
       }
     }
 
-    private void emitProcessingStatus(ProcessingState<Key> processingState,
+    private void emitProcessingStatus(ProcessingState<EventKey> processingState,
         MultiOutputReceiver outputReceiver, Instant statusTimestamp) {
       outputReceiver.get(statusTupleTag).outputWithTimestamp(KV.of(processingState.getKey(),
           OrderedProcessingStatus.create(processingState.getLastOutputSequence(),
@@ -485,7 +486,7 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
      * @return
      */
     private State processNewEvent(long currentSequence, Event currentEvent,
-        ProcessingState<Key> processingState, ValueState<State> currentStateState,
+        ProcessingState<EventKey> processingState, ValueState<State> currentStateState,
         OrderedListState<Event> bufferedEventsState,
         MultiOutputReceiver outputReceiver, Builder diagnostics) {
       if (currentSequence == Long.MAX_VALUE) {
@@ -562,7 +563,7 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
      * @param largeBatchEmissionTimer
      * @param diagnostics
      */
-    private void processBufferedEvents(ProcessingState<Key> processingState,
+    private void processBufferedEvents(ProcessingState<EventKey> processingState,
         State state, OrderedListState<Event> bufferedEventsState,
         MultiOutputReceiver outputReceiver,
         Timer largeBatchEmissionTimer, Builder diagnostics) {
@@ -647,7 +648,7 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
       diagnostics.setClearedBufferedEvents(ClearedBufferedEvents.create(startRange, endClearRange));
     }
 
-    private boolean exceededMaxResultCountForBundle(ProcessingState<Key> processingState,
+    private boolean exceededMaxResultCountForBundle(ProcessingState<EventKey> processingState,
         Timer largeBatchEmissionTimer) {
       boolean exceeded = processingState.resultsProducedInBundle(numberOfResultsBeforeBundleStart)
           >= maxNumberOfResultsToProduce;
@@ -665,11 +666,11 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
     @OnTimer(LARGE_BATCH_EMISSION_TIMER)
     public void onBatchEmission(OnTimerContext context,
         @StateId(BUFFERED_EVENTS) OrderedListState<Event> bufferedEventsState,
-        @AlwaysFetched @StateId(PROCESSING_STATE) ValueState<ProcessingState<Key>> processingStatusState,
+        @AlwaysFetched @StateId(PROCESSING_STATE) ValueState<ProcessingState<EventKey>> processingStatusState,
         @AlwaysFetched @StateId(MUTABLE_STATE) ValueState<State> currentStateState,
         @TimerId(LARGE_BATCH_EMISSION_TIMER) Timer largeBatchEmissionTimer,
-        OutputReceiver<KV<Key, Result>> resultReceiver, MultiOutputReceiver outputReceiver) {
-      ProcessingState<Key> processingState = processingStatusState.read();
+        OutputReceiver<KV<EventKey, Result>> resultReceiver, MultiOutputReceiver outputReceiver) {
+      ProcessingState<EventKey> processingState = processingStatusState.read();
       if (processingState == null) {
         LOG.warn("Processing state is empty. Ignore it if the pipeline is being cancelled.");
         return;
@@ -702,9 +703,9 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
     public void onStatusEmission(MultiOutputReceiver outputReceiver,
         @TimerId(STATUS_EMISSION_TIMER) Timer statusEmissionTimer,
         @StateId(WINDOW_CLOSED) ValueState<Boolean> windowClosedState,
-        @StateId(PROCESSING_STATE) ValueState<ProcessingState<Key>> processingStateState) {
+        @StateId(PROCESSING_STATE) ValueState<ProcessingState<EventKey>> processingStateState) {
 
-      ProcessingState<Key> currentState = processingStateState.read();
+      ProcessingState<EventKey> currentState = processingStateState.read();
       if (currentState == null) {
         // This could happen if the state has been purged already during the draining.
         // It means that there is nothing that we can do and we just need to return.
