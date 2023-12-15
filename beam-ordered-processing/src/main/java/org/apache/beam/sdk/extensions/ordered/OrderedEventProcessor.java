@@ -64,14 +64,14 @@ import org.slf4j.LoggerFactory;
  * are applied according to the provided sequence. Events which arrive out of sequence are buffered
  * and reprocessed when new events for a given key arrived.
  *
- * @param <Event>
- * @param <Key>
- * @param <State>
+ * @param <EventT>
+ * @param <KeyT>
+ * @param <StateT>
  */
 @AutoValue
 @SuppressWarnings({"nullness", "TypeNameShadowing"})
-public abstract class OrderedEventProcessor<Event, Key, Result, State extends MutableState<Event, Result>> extends
-    PTransform<PCollection<KV<Key, KV<Long, Event>>>, OrderedEventProcessorResult<Key, Result, Event>> {
+public abstract class OrderedEventProcessor<EventT, KeyT, ResultT, StateT extends MutableState<EventT, ResultT>> extends
+    PTransform<PCollection<KV<KeyT, KV<Long, EventT>>>, OrderedEventProcessorResult<KeyT, ResultT, EventT>> {
 
   public static final int DEFAULT_STATUS_UPDATE_FREQUENCY_SECONDS = 5;
   public static final boolean DEFAULT_PRODUCE_DIAGNOSTIC_EVENTS = false;
@@ -118,7 +118,7 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
    * @return
    */
 
-  public OrderedEventProcessor<Event, Key, Result, State> withStatusUpdateFrequencySeconds(
+  public OrderedEventProcessor<EventT, KeyT, ResultT, StateT> withStatusUpdateFrequencySeconds(
       int seconds) {
     return new AutoValue_OrderedEventProcessor<>(
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
@@ -127,7 +127,7 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
         this.getMaxNumberOfResultsPerOutput());
   }
 
-  public OrderedEventProcessor<Event, Key, Result, State> produceDiagnosticEvents(
+  public OrderedEventProcessor<EventT, KeyT, ResultT, StateT> produceDiagnosticEvents(
       boolean produceDiagnosticEvents) {
     return new AutoValue_OrderedEventProcessor<>(
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
@@ -142,7 +142,7 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
    *
    * @return
    */
-  public OrderedEventProcessor<Event, Key, Result, State> produceStatusUpdatesOnEveryEvent(
+  public OrderedEventProcessor<EventT, KeyT, ResultT, StateT> produceStatusUpdatesOnEveryEvent(
       boolean value) {
     return new AutoValue_OrderedEventProcessor<>(
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
@@ -151,7 +151,7 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
         this.getMaxNumberOfResultsPerOutput());
   }
 
-  public OrderedEventProcessor<Event, Key, Result, State> withMaxResultsPerOutput(
+  public OrderedEventProcessor<EventT, KeyT, ResultT, StateT> withMaxResultsPerOutput(
       long maxResultsPerOutput) {
     return new AutoValue_OrderedEventProcessor<>(
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
@@ -160,17 +160,17 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
         this.isProduceDiagnosticEvents(), maxResultsPerOutput);
   }
 
-  abstract EventExaminer<Event, State> getEventExaminer();
+  abstract EventExaminer<EventT, StateT> getEventExaminer();
 
   @Nullable
-  abstract Coder<Event> getEventCoder();
+  abstract Coder<EventT> getEventCoder();
 
-  abstract Coder<State> getStateCoder();
+  abstract Coder<StateT> getStateCoder();
 
   @Nullable
-  abstract Coder<Key> getKeyCoder();
+  abstract Coder<KeyT> getKeyCoder();
 
-  abstract Coder<Result> getResultCoder();
+  abstract Coder<ResultT> getResultCoder();
 
   abstract int getStatusUpdateFrequencySeconds();
 
@@ -181,31 +181,31 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
   abstract long getMaxNumberOfResultsPerOutput();
 
   @Override
-  public OrderedEventProcessorResult<Key, Result, Event> expand(
-      PCollection<KV<Key, KV<Long, Event>>> input) {
-    final TupleTag<KV<Key, Result>> mainOutput = new TupleTag<>("mainOutput") {
+  public OrderedEventProcessorResult<KeyT, ResultT, EventT> expand(
+      PCollection<KV<KeyT, KV<Long, EventT>>> input) {
+    final TupleTag<KV<KeyT, ResultT>> mainOutput = new TupleTag<>("mainOutput") {
     };
-    final TupleTag<KV<Key, OrderedProcessingStatus>> statusOutput = new TupleTag<>("status") {
+    final TupleTag<KV<KeyT, OrderedProcessingStatus>> statusOutput = new TupleTag<>("status") {
     };
 
-    final TupleTag<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticOutput = new TupleTag<>(
+    final TupleTag<KV<KeyT, OrderedProcessingDiagnosticEvent>> diagnosticOutput = new TupleTag<>(
         "diagnostics") {
     };
 
-    final TupleTag<KV<Key, KV<Long, UnprocessedEvent<Event>>>> unprocessedEventOutput = new TupleTag<>(
+    final TupleTag<KV<KeyT, KV<Long, UnprocessedEvent<EventT>>>> unprocessedEventOutput = new TupleTag<>(
         "unprocessed-events") {
     };
 
-    Coder<Key> keyCoder = getKeyCoder();
+    Coder<KeyT> keyCoder = getKeyCoder();
     if (keyCoder == null) {
       // Assume that the default key coder is used and use the key coder from it.
-      keyCoder = ((KvCoder<Key, KV<Long, Event>>) input.getCoder()).getKeyCoder();
+      keyCoder = ((KvCoder<KeyT, KV<Long, EventT>>) input.getCoder()).getKeyCoder();
     }
 
-    Coder<Event> eventCoder = getEventCoder();
+    Coder<EventT> eventCoder = getEventCoder();
     if (eventCoder == null) {
       // Assume that the default key coder is used and use the event coder from it.
-      eventCoder = ((KvCoder<Long, Event>) ((KvCoder<Key, KV<Long, Event>>) input.getCoder()).getValueCoder()).getValueCoder();
+      eventCoder = ((KvCoder<Long, EventT>) ((KvCoder<KeyT, KV<Long, EventT>>) input.getCoder()).getValueCoder()).getValueCoder();
     }
     PCollectionTuple processingResult = input.apply(ParDo.of(
         new OrderedProcessorDoFn<>(getEventExaminer(), eventCoder,
@@ -219,12 +219,12 @@ public abstract class OrderedEventProcessor<Event, Key, Result, State extends Mu
                 : getMaxNumberOfResultsPerOutput())).withOutputTags(mainOutput,
         TupleTagList.of(Arrays.asList(statusOutput, diagnosticOutput, unprocessedEventOutput))));
 
-    KvCoder<Key, Result> mainOutputCoder = KvCoder.of(keyCoder, getResultCoder());
-    KvCoder<Key, OrderedProcessingStatus> processingStatusCoder = KvCoder.of(keyCoder,
+    KvCoder<KeyT, ResultT> mainOutputCoder = KvCoder.of(keyCoder, getResultCoder());
+    KvCoder<KeyT, OrderedProcessingStatus> processingStatusCoder = KvCoder.of(keyCoder,
         getOrderedProcessingStatusCoder(input.getPipeline()));
-    KvCoder<Key, OrderedProcessingDiagnosticEvent> diagnosticOutputCoder = KvCoder.of(keyCoder,
+    KvCoder<KeyT, OrderedProcessingDiagnosticEvent> diagnosticOutputCoder = KvCoder.of(keyCoder,
         getOrderedProcessingDiagnosticsCoder(input.getPipeline()));
-    KvCoder<Key, KV<Long, UnprocessedEvent<Event>>> unprocessedEventsCoder = KvCoder.of(keyCoder,
+    KvCoder<KeyT, KV<Long, UnprocessedEvent<EventT>>> unprocessedEventsCoder = KvCoder.of(keyCoder,
         KvCoder.of(VarLongCoder.of(), new UnprocessedEventCoder<>(eventCoder)));
     return new OrderedEventProcessorResult<>(
         input.getPipeline(),
