@@ -75,8 +75,8 @@ public class OrderedEventProcessorTest {
     final private StringBuilder sb = new StringBuilder();
 
     @Override
-    public void mutate(String mutation) {
-      sb.append(mutation);
+    public void mutate(String event) {
+      sb.append(event);
     }
 
     @Override

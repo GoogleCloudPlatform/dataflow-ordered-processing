@@ -16,195 +16,192 @@
 
 package com.google.cloud;
 
+import java.io.IOException;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Iterator;
+import java.util.List;
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParameterException;
+import com.google.cloud.orderbook.MatcherContext;
 import com.google.cloud.orderbook.OrderBookBuilder;
 import com.google.cloud.orderbook.model.MarketDepth;
 import com.google.cloud.orderbook.model.OrderBookEvent;
-import com.google.cloud.orderbook.MatcherContext;
 import com.google.cloud.simulator.Simulator;
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 
 public class App {
 
-  static private final Options options = new Options();
+  // Program parameters
+  @Parameter(names = {"--help", "-h"}, description = "Display the usage documentation", help = true)
+  private boolean help;
 
-  public static final String LIMIT = "limit";
+  // Simulator Generator
+  @Parameter(names = {"--limit"}, description = "Limit of events to produce")
+  private long limit = 0;
+  @Parameter(names = {
+      "--seed"}, description = "Seed for random number generator (if deterministic)")
+  private long seed = 0;
+  @Parameter(names = {
+      "--degree"}, description = "Degree for distribution of frequency of orders (0 is uniforn, 1 is linear, 2 for ^2, etc)")
+  private long degree = 2;
+  @Parameter(names = {"--contracts"}, description = "Number of contracts to create")
+  private long contracts = 100;
+  @Parameter(names = {"--rate"}, description = "Rate for event generation (per second, minimum 10)")
+  private long rate = 10;
+  @Parameter(names = {
+      "--simtime"}, description = "Use simulated time rather than real time (requires rate for events per second)")
+  private long simtime = 0;
+  @Parameter(names = {
+      "--duration"}, description = "Duration of the exchange before finishing (format in ISO-8601, e.g., PT2M for 2 minutes")
+  private String duration = null;
 
-  public static final String DURATION = "duration";
+  // Related to PubSub
+  @Parameter(names = {"--region"}, description = "Pub/Sub region to publish to")
+  private String region = null;
+  @Parameter(names = {"--ordertopic"}, description = "Pub/Sub topic to publish orders")
+  private String orderTopic = null;
+  @Parameter(names = {"--marketdepthtopic"}, description = "Pub/Sub topic to publish market depth")
+  private String marketDepthTopic = null;
 
-  public static final String SEED = "seed";
+  public static void main(String argv[]) {
 
-  public static final String DEGREE = "degree";
+    // Initialize the parsing objects
+    App args = new App();
+    JCommander parser = JCommander
+        .newBuilder()
+        .addObject(args)
+        .build();
 
-  public static final String RATE = "rate";
-
-  public static final String SIM_TIME = "simtime";
-
-  public static final String CONTRACTS = "contracts";
-
-  public static final String HELP = "help";
-
-  public static final String ORDER_TOPIC = "ordertopic";
-  public static final String MARKET_DEPTH_TOPIC = "marketdepthtopic";
-  public static final String REGION = "region";
-
-  static {
-    // TODO: refactor to use option groups to make sure the two topics are always provided
-    options.addOption(Option.builder("h").longOpt(HELP).optionalArg(false)
-        .desc("Display the usage documentation.").type(String.class).build());
-    options.addOption(Option.builder("l").hasArg(true).longOpt(LIMIT).optionalArg(false)
-        .desc("Limit of events to produce").type(Number.class).build());
-    options.addOption(Option.builder("d").hasArg(true).longOpt(DURATION).optionalArg(false)
-        .desc("Duration of exchange before finishing (format in ISO-8601, e.g., PT2M for 2 minutes)").type(String.class).build());
-    options.addOption(Option.builder("s").hasArg(true).longOpt(SEED).optionalArg(false)
-        .desc("Seed for random number generator (if deterministic)").type(Number.class).build());
-    options.addOption(Option.builder("g").hasArg(true).longOpt(DEGREE).optionalArg(false)
-        .desc("Degree for distribution of frequency of orders (0 is unform, 1 is linear, 2 for ^2, etc)").type(Number.class).build());
-    options.addOption(Option.builder("c").hasArg(true).longOpt(CONTRACTS).optionalArg(false)
-        .desc("Number of contracts to create (default is 1)").type(Number.class).build());
-    options.addOption(Option.builder("o").hasArg(true).longOpt(ORDER_TOPIC).optionalArg(true)
-        .desc("Pub/Sub topic to publish orders").type(String.class).build());
-    options.addOption(Option.builder("m").hasArg(true).longOpt(MARKET_DEPTH_TOPIC).optionalArg(true)
-        .desc("Pub/Sub topic to publish market depth").type(String.class).build());
-    options.addOption(Option.builder("r").hasArg(true).longOpt(RATE).optionalArg(true)
-        .desc("Rate for event generation (per second, minimum 10)").type(Number.class).build());
-    options.addOption(Option.builder("t").hasArg(false).longOpt(SIM_TIME).optionalArg(true)
-        .desc("Use simulated time rather than real time (requires rate for events per second)")
-        .build());
-    options.addOption(Option.builder("z").hasArg(true).longOpt(REGION).optionalArg(true)
-        .desc("Pub/Sub region to publish to").build());
-  }
-
-  private static void showHelp() {
-    HelpFormatter formatter = new HelpFormatter();
-    formatter.printHelp(App.class.getSimpleName(), options);
-  }
-
-  public static void main(String[] args) throws Exception {
-
-    String orderTopic = null;
-    String marketDepthTopic = null;
-    String region = null;
-    Long limit = null;
-    Long seed = null;
-    Long maxContracts = null;
-    Long eventsPerSecond = null;
-    long maxSeconds = 0;
-    Long degree = null;
-    boolean simtime = false;
     try {
-      CommandLineParser parser = new DefaultParser();
-      CommandLine line = parser.parse(options, args);
 
-      limit = (Long)line.getParsedOptionValue(LIMIT);
-
-      if (line.hasOption(DURATION)) {
-        maxSeconds = Duration.parse(line.getOptionValue(DURATION)).getSeconds();
+      // Parse the user-specifiedc arguments
+      parser.parse(argv);
+      if (args.help) {
+        parser.usage();
+        System.exit(1);
       }
 
-      seed = (Long) line.getParsedOptionValue(SEED);
-
-      degree = (Long) line.getParsedOptionValue(DEGREE);
-
-      eventsPerSecond = (Long) line.getParsedOptionValue(RATE);
-
-      simtime = line.hasOption(SIM_TIME);
-
-      maxContracts = (Long) line.getParsedOptionValue(CONTRACTS);
-      orderTopic = line.getOptionValue(ORDER_TOPIC);
-      marketDepthTopic = line.getOptionValue(MARKET_DEPTH_TOPIC);
-      region = line.getOptionValue(REGION);
-
-      if (line.hasOption(HELP)) {
-        showHelp();
-        System.exit(0);
-      }
-    } catch (ParseException e) {
-      System.err.println("Parsing failed.  Reason: " + e.getMessage());
-      showHelp();
-      System.exit(-1);
+      // Run the simulator
+      args.runSimulator();
     }
 
-    try (EventConsumer eventConsumer = orderTopic == null ? new StandardOutputConsumer()
-        : new PubSubConsumer(orderTopic, marketDepthTopic, region)) {
+    // Failure parsing an argument (show usage)
+    catch (ParameterException e) {
+      System.out.println(
+          String.format("Failed parsing command line: %s", e.getMessage()));
+      parser.usage();
+      System.exit(1);
+    }
 
-      runSimulator(
-          (maxContracts == null) ? 1 : maxContracts,
-          (limit == null) ? 0 : limit,
-          maxSeconds,
-          (seed == null) ? 0 : seed,
-        (eventsPerSecond == null) ? 0 : eventsPerSecond,
-        simtime,
-        (degree == null) ? 2 : degree,
-        eventConsumer);
+    // Runtime exception -- just show error
+    catch (Exception e) {
+      e.printStackTrace();
+      System.out.println(
+          String.format("Failed running: %s", e.getMessage()));
+      System.exit(1);
     }
   }
 
   /**
-   * @param limit Number of orders to generate (0 = unlimited)
-   * @param seed  Random seed for running simulator (0 = standard method)
+   * Run the simulator based on the App arguments
+   *
+   * @throws Exception
    */
-  public static void runSimulator(
-    long maxContracts, long limit, long maxSeconds, long seed,
-    long eventsPerSecond, boolean simTime, long degree,
-    EventConsumer eventConsumer) {
+  private void runSimulator() throws Exception {
+    try (EventConsumer eventConsumer = buildConsumer()) {
 
-    String sessionId = DateTimeFormatter.ofPattern("yyyy-MM-dd.HH:mm").format(LocalDateTime.now());
+      OrderBookBuilder obb = new OrderBookBuilder();
+      Iterator<List<OrderBookEvent>> it = buildSimulator();
 
-    // Initialize the MatcherContext
-    //
-    // This object governs the rate of order book events and the timestamp that is
-    // recorded on them.
-    MatcherContext.Builder builder;
-    if (eventsPerSecond > 0) {
-      if (simTime) {
-        builder = MatcherContext.buildSimulated(sessionId, eventsPerSecond);
-      } else {
-        builder = MatcherContext.buildThrottled(sessionId, eventsPerSecond);
-      }
-    } else {
-      if (simTime) {
-        System.out.println("Cannot specify simulated time with no rate!");
-        System.exit(1);
-      }
-      builder = MatcherContext.build(sessionId);
-    }
-    if (maxSeconds > 0)
-      builder.withMaxSeconds(maxSeconds);
-    if (limit > 0)
-      builder.withMaxEvents(limit);
+      while (it.hasNext()) {
+        for (OrderBookEvent orderBookEvent : it.next()) {
 
-    MatcherContext context = builder.build();
-    OrderBookBuilder obb = new OrderBookBuilder();
+          // Publish the order book event
+          eventConsumer.accept(orderBookEvent);
 
-    Iterator<List<OrderBookEvent>> it = Simulator.getComplexSimulator(context, maxContracts, 100, seed, degree);
-    while (it.hasNext()) {
-      for (OrderBookEvent orderBookEvent : it.next()) {
-        eventConsumer.accept(orderBookEvent);
+          // Modify the orderbook
+          obb.processEvent(orderBookEvent);
 
-        // Modify the orderbook
-        obb.processEvent(orderBookEvent);
+          // Produce the latest MarketDepth
+          MarketDepth marketDepth = obb.getCurrentMarketDepth(2, true);
 
-        // Produce the latest MarketDepth
-        MarketDepth marketDepth = obb.getCurrentMarketDepth(2, true);
-
-        // If there's anything new in the MarketDepth, then print to stdout
-        if (marketDepth != null) {
-          eventConsumer.accept(marketDepth);
+          // If there's anything new in the MarketDepth, then publish the market depth
+          if (marketDepth != null) {
+            eventConsumer.accept(marketDepth);
+          }
         }
       }
     }
+  }
+
+  /**
+   * Build the consumer (publishing) objects based on the App arguments
+   *
+   * @return EventConsumer
+   * @throws ParameterException
+   * @throws IOException
+   */
+  EventConsumer buildConsumer() throws ParameterException, IOException {
+    if (orderTopic == null && marketDepthTopic == null && region == null) {
+      return new StandardOutputConsumer();
+    }
+
+    if (orderTopic != null && marketDepthTopic != null) {
+      return new PubSubConsumer(orderTopic, marketDepthTopic, region);
+    }
+
+    throw new ParameterException("Please specify both --orderTopic and --marketDepthTopic");
+  }
+
+  /**
+   * Build the simulator based on the App arguments
+   *
+   * @return Iterator<List < OrderBookEvent>>
+   */
+  Iterator<List<OrderBookEvent>> buildSimulator() {
+    return Simulator.getComplexSimulator(
+        buildMatcherContext(),
+        contracts,
+        100,
+        seed,
+        degree);
+  }
+
+  /**
+   * Build the MatcherContext based on the App arguments
+   *
+   * @return MatcherContext
+   * @throws ParameterException
+   */
+  MatcherContext buildMatcherContext() throws ParameterException {
+    String sessionId = DateTimeFormatter.ofPattern("yyyy-MM-dd.HH:mm").format(LocalDateTime.now());
+
+    MatcherContext.Builder builder;
+    if (rate > 0) {
+      if (simtime > 0) {
+        System.out.println("Building simulated");
+        builder = MatcherContext.buildSimulated(sessionId, rate);
+      } else {
+        System.out.println("Building throttled");
+        builder = MatcherContext.buildThrottled(sessionId, rate);
+      }
+    } else {
+      if (simtime > 0) {
+        throw new ParameterException("Cannot specify simulated time (--simtime) with no rate");
+      }
+      builder = MatcherContext.build(sessionId);
+    }
+
+    if (duration != null) {
+      builder.withMaxSeconds(Duration.parse(duration).getSeconds());
+    }
+
+    if (limit > 0) {
+      builder.withMaxEvents(limit);
+    }
+
+    return builder.build();
   }
 }

@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 public class OrderBookProcessingPipeline {
 
+  @SuppressWarnings({"unused"})
   private static final Logger LOG = LoggerFactory.getLogger(OrderBookProcessingPipeline.class);
 
   public interface Options extends GcpOptions {

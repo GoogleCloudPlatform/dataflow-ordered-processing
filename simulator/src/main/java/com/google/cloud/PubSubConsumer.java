@@ -132,8 +132,6 @@ public class PubSubConsumer implements EventConsumer {
   public void close() {
     orderPublisher.shutdown();
     marketDepthPublisher.shutdown();
-    // TODO: refactor so that there is a single call to print the final stats and cancel the timer.
-    statsLogger.run();
     statsLogger.cancel();
   }
 }

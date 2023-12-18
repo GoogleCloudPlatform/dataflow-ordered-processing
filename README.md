@@ -14,7 +14,18 @@ of the pipeline.
 
 ## Use Case
 
-TODO: describe
+[//]: # (TODO: validate the description)
+The use case is maintaining an [order book](https://en.wikipedia.org/wiki/Order_book) of security
+order events (buy, sell or cancellation) and producing the security's market depth on every trade.
+
+The market depth data can be saved to a persistent storage for and additional analysis or can be
+analyzed in the same pipeline to build a streaming analytics solution.
+
+Use case's is implemented as a standalone Java module ([business model](business-model)), with the
+core logic residing in
+the [OrderBookBuilder](business-model/src/main/java/com/google/cloud/orderbook/OrderBookBuilder.java)
+class. The [simulator](simulator) package has utilities to generate order book events simulating
+financial institution trading sessions.
 
 ## Pipeline Design
 
@@ -54,7 +65,7 @@ This will start a simulator which will be generating synthetic orders and expect
 events:
 
 ```shell
-./start-simulator.sh
+./start-pubsub-simulator.sh
 ```
 
 ## Analyse the data
@@ -67,26 +78,36 @@ processes the data.
 To see the processing state for the latest session:
 
 ```sql
-WITH latest_statuses AS (SELECT s.received_count,
-                                s.buffered_count,
-                                s.result_count,
-                                s.duplicate_count,
-                                s.last_event_received
-                         FROM `ordered_processing_demo.processing_status` s
-                         WHERE session_id = (SELECT DISTINCT session_id
-                                             FROM `ordered_processing_demo.processing_status`
-                                             ORDER BY session_id DESC
-    LIMIT 1)
-    QUALIFY RANK() OVER (PARTITION BY session_id
+WITH latest_statuses AS (
+   -- Stats for each contract
+   SELECT s.received_count,
+          s.buffered_count,
+          s.result_count,
+          s.duplicate_count,
+          s.last_event_received
+   FROM `ordered_processing_demo.processing_status` s
+   WHERE
+      -- Find latest session_id
+      session_id = (SELECT DISTINCT session_id
+                    FROM `ordered_processing_demo.processing_status`
+                    ORDER BY session_id DESC
+   LIMIT
+   1
+   )
+-- Most recent stats by status_id across (session_id, contract_id)
+   QUALIFY RANK() OVER (
+   PARTITION BY session_id
    , contract_id
-ORDER BY status_ts DESC, received_count DESC) = 1 )
-SELECT COUNT(*)                    total_contracts,
+ORDER BY status_ts DESC, received_count DESC
+   ) = 1
+   )
+SELECT COUNT(*)                   total_contracts,
        COUNTIF(last_event_received
-           AND buffered_count = 0) fully_processed,
-       SUM(received_count)         total_orders_received,
-       SUM(buffered_count)         total_orders_buffered,
-       SUM(result_count)           total_results_produced,
-       SUM(duplicate_count)        total_duplicates
+          AND buffered_count = 0) fully_processed,
+       SUM(received_count)        total_orders_received,
+       SUM(buffered_count)        total_orders_buffered,
+       SUM(result_count)          total_results_produced,
+       SUM(duplicate_count)       total_duplicates
 FROM latest_statuses;
 ```
 
@@ -100,29 +121,38 @@ FROM `ordered_processing_demo.processing_status`
 WHERE session_id = (SELECT DISTINCT session_id
                     FROM `ordered_processing_demo.processing_status`
                     ORDER BY session_id DESC
-    LIMIT 1)
-    QUALIFY RANK() OVER (PARTITION BY session_id
+   LIMIT 1
+   )
+   QUALIFY RANK() OVER (
+   PARTITION BY
+   session_id
     , contract_id
-ORDER BY status_ts DESC, received_count DESC) <= 5
 ORDER BY
-    session_id,
-    contract_id,
-    status_ts DESC,
-    received_count DESC
-    LIMIT 300
+   status_ts DESC, received_count DESC
+   ) <= 5
+ORDER BY
+   session_id,
+   contract_id,
+   status_ts DESC,
+   received_count DESC
+   LIMIT
+   300
 ```
 
 ### Check out the latest market depths for each contract
 
 ```sql
 SELECT *
-FROM `ordered_processing_demo.market_depth` QUALIFY RANK() OVER (PARTITION BY session_id, contract_id ORDER BY session_id, contract_sequence_id DESC) <= 5
+FROM `ordered_processing_demo.market_depth` QUALIFY RANK() OVER (
+  PARTITION BY
+    session_id, contract_id
+  ORDER BY
+    session_id, contract_sequence_id DESC
+  ) <= 5
 ORDER BY
-    session_id,
-    contract_id,
-    contract_sequence_id DESC
-    LIMIT
-    300
+   session_id, contract_id, contract_sequence_id DESC
+   LIMIT
+   300
 ```
 
 ## Cleanup
