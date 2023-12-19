@@ -16,9 +16,9 @@ of the pipeline.
 
 [//]: # (TODO: validate the description)
 The use case is maintaining an [order book](https://en.wikipedia.org/wiki/Order_book) of security
-order events (buy, sell or cancellation) and producing the security's market depth on every trade.
+order events (new order, cancel order, or order execution) and producing the security's market depth on every trade.
 
-The market depth data can be saved to a persistent storage for and additional analysis or can be
+The market depth data can be saved to a persistent storage for additional analysis or can be
 analyzed in the same pipeline to build a streaming analytics solution.
 
 Use case's is implemented as a standalone Java module ([business model](business-model)), with the
