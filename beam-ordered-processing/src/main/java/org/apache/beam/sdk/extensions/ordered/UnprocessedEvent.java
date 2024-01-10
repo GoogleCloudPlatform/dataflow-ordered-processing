@@ -20,6 +20,7 @@ import com.google.auto.value.AutoValue;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.beam.sdk.coders.ByteCoder;
 import org.apache.beam.sdk.coders.Coder;
@@ -62,13 +63,13 @@ public abstract class UnprocessedEvent<EventT> {
 
     @Override
     public List<? extends Coder<?>> getCoderArguments() {
-//     TODO: implement
-      return null;
+      return Arrays.asList(eventCoder);
     }
 
     @Override
     public void verifyDeterministic() throws NonDeterministicException {
-// TODO: implement
+      verifyDeterministic(this, "Unprocessed event coder requires deterministic event coder",
+          eventCoder);
     }
   }
 
