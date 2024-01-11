@@ -130,8 +130,11 @@ public class StatsTracker {
   }
 
   static public class Stats {
+
     private TimeDistribution timings = new TimeDistribution();
     private long startTime = System.currentTimeMillis();
+
+    private long allOpsCount = 0;
     private long ops = 0;
     private long bytes = 0;
     private final String name;
@@ -146,6 +149,7 @@ public class StatsTracker {
     }
 
     synchronized void add(long nanoDuration, long ops, long bytes) {
+      this.allOpsCount += ops;
       this.ops += ops;
       this.bytes += bytes;
       timings.add(ops, nanoDuration);
@@ -189,14 +193,18 @@ public class StatsTracker {
 
       // Format output
       return String.format("%s: %s %s %s %s %s %s %s",
-        name,
-        getFormattedBytes(windowBytes/duration),
-        getFormattedOps(windowOps/duration),
-        getFormattedLatency(latencies.get(0)),
-        getFormattedLatency(latencies.get(1)),
-        getFormattedLatency(latencies.get(2)),
-        getFormattedLatency(latencies.get(3)),
-        getFormattedLatency(latencies.get(4)));
+          name,
+          getFormattedBytes(windowBytes / duration),
+          getFormattedOps(windowOps / duration),
+          getFormattedLatency(latencies.get(0)),
+          getFormattedLatency(latencies.get(1)),
+          getFormattedLatency(latencies.get(2)),
+          getFormattedLatency(latencies.get(3)),
+          getFormattedLatency(latencies.get(4)));
+    }
+
+    public long getAllOpsCount() {
+      return allOpsCount;
     }
   }
 

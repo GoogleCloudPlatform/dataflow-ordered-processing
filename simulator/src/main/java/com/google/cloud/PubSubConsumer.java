@@ -133,5 +133,6 @@ public class PubSubConsumer implements EventConsumer {
     orderPublisher.shutdown();
     marketDepthPublisher.shutdown();
     statsLogger.cancel();
+    System.out.println("Total number of orders published: " + orderStats.getAllOpsCount());
   }
 }
