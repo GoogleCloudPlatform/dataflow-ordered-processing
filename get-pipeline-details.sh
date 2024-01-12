@@ -1,7 +1,5 @@
-#!/usr/bin/env bash
-
 #
-# Copyright 2023 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,17 +14,4 @@
 # limitations under the License.
 #
 
-set -e
-set -u
-
-source ./get-terraform-output.sh
-source ./get-pipeline-details.sh
-
-JOB_IDS=$(gcloud dataflow jobs list --region "$REGION" --filter="NAME:${JOB_NAME} AND STATE:Running" --format="get(JOB_ID)")
-
-IFS=$'\n'
-id_array=($JOB_IDS)
-for (( i=0; i<${#id_array[@]}; i++ )) ; do
-  pipeline_id=${id_array[$i]}
-  gcloud dataflow jobs drain --region "$REGION" "${pipeline_id}"
-done
+JOB_NAME="order-book-builder"

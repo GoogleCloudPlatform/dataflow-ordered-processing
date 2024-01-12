@@ -20,12 +20,18 @@ set -e
 set -u
 
 source ./get-terraform-output.sh
+source ./get-pipeline-details.sh
 
-worker_parameters="--maxNumWorkers=3"
+initial_number_of_workers=1
+if [[ "$#" -ge 1 ]]; then
+    initial_number_of_workers=$1
+fi
 
-JOB_NAME="order-book-builder"
 
-EXPERIMENTS=enable_recommendations,enable_lightweight_streaming_update
+
+worker_parameters="--maxNumWorkers=30 --numWorkers=${initial_number_of_workers}"
+
+EXPERIMENTS="enable_recommendations,enable_lightweight_streaming_update"
 
 cd order-book-pipeline
 
@@ -33,7 +39,7 @@ set -x
 mvn -q compile exec:java -Dexec.args="--jobName=${JOB_NAME} \
  --runner=Dataflow \
  --project=${PROJECT_ID} \
- --region=${GCP_REGION} \
+ --region=${REGION} \
  --enableStreamingEngine \
  --diskSizeGb=30 \
  --serviceAccount=${DATAFLOW_SA} \

@@ -68,23 +68,23 @@ public class App {
   public static void main(String argv[]) {
 
     // Initialize the parsing objects
-    App args = new App();
+    App app = new App();
     JCommander parser = JCommander
         .newBuilder()
-        .addObject(args)
+        .addObject(app)
         .build();
 
     try {
 
       // Parse the user-specifiedc arguments
       parser.parse(argv);
-      if (args.help) {
+      if (app.help) {
         parser.usage();
         System.exit(1);
       }
 
       // Run the simulator
-      args.runSimulator();
+      app.runSimulator();
     }
 
     // Failure parsing an argument (show usage)
@@ -177,7 +177,7 @@ public class App {
    */
   MatcherContext buildMatcherContext() throws ParameterException {
     String sessionId = DateTimeFormatter.ofPattern("yyyy-MM-dd.HH:mm").format(LocalDateTime.now());
-
+    System.out.println("Session id for this simulation: " + sessionId);
     MatcherContext.Builder builder;
     if (rate > 0) {
       if (simtime > 0) {
