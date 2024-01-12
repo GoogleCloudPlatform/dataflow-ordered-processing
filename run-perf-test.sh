@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #
-# Copyright 2023 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,6 +22,10 @@ set -u
 number_of_contracts=$1
 number_of_events=$2
 initial_number_of_workers=$3
+disable_auto_scaling=
+if [[ $# == 4 ]]; then
+  disable_auto_scaling='disable'
+fi
 
 function pipeline_is_ready_to_process_data() {
   local project_id=$1
@@ -104,12 +108,10 @@ function wait_for_pipeline_completion() {
   done
 }
 
-cd ..
-
 source ./get-terraform-output.sh
 source ./get-pipeline-details.sh
 
-./start-pipeline.sh "${initial_number_of_workers}"
+./start-pipeline.sh "${initial_number_of_workers}" ${disable_auto_scaling}
 
 pipeline_id=$(gcloud dataflow jobs list --region "$REGION" \
 --filter="NAME:${JOB_NAME} AND (STATE:Pending OR STATE:Running)" \
@@ -152,9 +154,7 @@ test_duration_in_seconds=$(( SECONDS - test_run_start ))
 
 ./stop-pipeline.sh
 
-cd performance-test
-
-echo "$(date '+%Y-%m-%d %H:%M:%S') - session ${session_id} with ${number_of_simulated_events} events for ${number_of_contracts} contracts processed in ${test_duration_in_seconds} seconds by pipeline ${pipeline_id}." | tee -a test-log.txt
+echo "$(date '+%Y-%m-%d %H:%M:%S') - session ${session_id} with ${number_of_simulated_events} events for ${number_of_contracts} contracts processed in ${test_duration_in_seconds} seconds by pipeline ${pipeline_id} (${initial_number_of_workers} initial workers, autoscaling $([ -z "$disable_auto_scaling" ] && echo "enabled" || echo "disabled"))." | tee -a test-log.txt
 
 # Need to do it in order to string together a number of tests to be run by separate pipelines.
 wait_for_pipeline_completion "${pipeline_id}"

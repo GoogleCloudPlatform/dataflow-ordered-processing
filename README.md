@@ -59,13 +59,22 @@ mvn clean install
 
 ## Running the demo
 
-### Start the test harness
+### Start the pipeline
+
+This pipeline was tested using the JDK 11. If you have multiple JDKs installed, please set
+the `JAVA_HOME` environment variable to point to the right JDK.
+
+```shell
+./start-pipeline.sh
+```
+
+### Run the test harness
 
 This will start a simulator which will be generating synthetic orders and expected order book
 events:
 
 ```shell
-./start-pubsub-simulator.sh
+./run-pubsub-simulator.sh
 ```
 
 ## Analyse the data
@@ -91,16 +100,11 @@ WITH latest_statuses AS (
       session_id = (SELECT DISTINCT session_id
                     FROM `ordered_processing_demo.processing_status`
                     ORDER BY session_id DESC
-   LIMIT
-   1
+   LIMIT 1
    )
--- Most recent stats by status_id across (session_id, contract_id)
-   QUALIFY RANK() OVER (
-   PARTITION BY session_id
-   , contract_id
-ORDER BY status_ts DESC, received_count DESC
-   ) = 1
-   )
+-- Most recent stats by status_id across contract_id
+   QUALIFY RANK() OVER (PARTITION BY contract_id
+ORDER BY status_ts DESC, received_count DESC) = 1)
 SELECT COUNT(*)                   total_contracts,
        COUNTIF(last_event_received
           AND buffered_count = 0) fully_processed,
@@ -113,52 +117,64 @@ FROM latest_statuses;
 
 #### See the status of processing per each contract
 
-This query shows processing status per contract for the latest session:
+This query shows last 5 processing statuses per contract for the latest session:
 
 ```sql
 SELECT *
 FROM `ordered_processing_demo.processing_status`
 WHERE session_id = (SELECT DISTINCT session_id
                     FROM `ordered_processing_demo.processing_status`
-                    ORDER BY session_id DESC
-   LIMIT 1
-   )
-   QUALIFY RANK() OVER (
-   PARTITION BY
-   session_id
-    , contract_id
-ORDER BY
-   status_ts DESC, received_count DESC
-   ) <= 5
-ORDER BY
-   session_id,
-   contract_id,
-   status_ts DESC,
-   received_count DESC
-   LIMIT
-   300
+                    ORDER BY session_id DESC LIMIT 1)
+   QUALIFY RANK() OVER (PARTITION BY contract_id
+ORDER BY status_ts DESC, received_count DESC) <= 5
+ORDER BY contract_id, status_ts DESC, received_count DESC LIMIT 300
 ```
 
 ### Check out the latest market depths for each contract
 
 ```sql
 SELECT *
-FROM `ordered_processing_demo.market_depth` QUALIFY RANK() OVER (
-  PARTITION BY
-    session_id, contract_id
-  ORDER BY
-    session_id, contract_sequence_id DESC
-  ) <= 5
-ORDER BY
-   session_id, contract_id, contract_sequence_id DESC
-   LIMIT
-   300
+FROM `ordered_processing_demo.market_depth`
+WHERE session_id = (SELECT DISTINCT session_id
+                    FROM `ordered_processing_demo.market_depth`
+                    ORDER BY session_id DESC LIMIT 1)
+   QUALIFY RANK() OVER ( PARTITION BY contract_id
+ORDER BY contract_sequence_id DESC) <= 5
+ORDER BY contract_id, contract_sequence_id DESC LIMIT 300
+```
+
+## Stop the pipeline
+
+You can run multiple, or parallel, simulator runs to see how the pipeline works. Once you are done,
+
+```shell
+./stop-pipeline.sh
+```
+
+## Performance tests
+
+To test pipeline performance using different number of contracts, total number of orders and
+different pipeline parameters:
+
+```shell
+ ./run-perf-test.sh <number-of-contract> <total-number-of-orders> <number-of-inital-workers> <disable-horizontal-autoscaling>
+```
+
+The first three parameters are required. Any value passed in forth parameter will disable the
+autoscaling.
+
+The script will start the pipeline, wait for the workers to be ready to process the data, run the
+simulator and wait for the processing completion. It will then shut down the pipeline. The results
+of the run test run are appended to the `test-log.txt` file, e.g.:
+
+```text
+2024-01-12 09:47:08 - session 2024-01-12.09:36 with 50056466 events for 3000 contracts processed in 657 seconds by pipeline 2024-01-12_09_33_55-3943530097295374913.
+
 ```
 
 ## Cleanup
 
 ```shell
-./stop-pipeline.sh
 terraform -chdir terraform destroy 
 ```
 
