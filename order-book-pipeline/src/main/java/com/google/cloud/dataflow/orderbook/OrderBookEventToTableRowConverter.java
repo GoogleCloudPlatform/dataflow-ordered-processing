@@ -19,6 +19,7 @@ package com.google.cloud.dataflow.orderbook;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.orderbook.model.OrderBookEvent;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.joda.time.Instant;
 
 public class OrderBookEventToTableRowConverter implements
     SerializableFunction<OrderBookEvent, TableRow> {
@@ -28,7 +29,7 @@ public class OrderBookEventToTableRowConverter implements
     TableRow result = new TableRow();
     result.set("session_id", input.getSessionId());
     result.set("contract_id", input.getContractId());
-    result.set("event_ts", input.getTimestampMS());
+    result.set("event_ts", Instant.ofEpochMilli(input.getTimestampMS()));
     result.set("contract_sequence_id", input.getContractSeqId());
     result.set("last_contract_message", input.getLastContractMessage());
     result.set("order_type", input.getType().toString());
