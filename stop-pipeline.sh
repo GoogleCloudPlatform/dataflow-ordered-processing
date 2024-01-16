@@ -19,16 +19,14 @@
 set -e
 set -u
 
-
-JOB_NAME="order-book-builder"
-
 source ./get-terraform-output.sh
+source ./get-pipeline-details.sh
 
-JOB_IDS=$(gcloud dataflow jobs list --region "$GCP_REGION" --filter="NAME:${JOB_NAME} AND STATE:Running" --format="get(JOB_ID)")
+JOB_IDS=$(gcloud dataflow jobs list --region "$REGION" --filter="NAME:${JOB_NAME} AND STATE:Running" --format="get(JOB_ID)")
 
 IFS=$'\n'
 id_array=($JOB_IDS)
 for (( i=0; i<${#id_array[@]}; i++ )) ; do
   pipeline_id=${id_array[$i]}
-  gcloud dataflow jobs drain --region "$GCP_REGION" "${pipeline_id}"
+  gcloud dataflow jobs drain --region "$REGION" "${pipeline_id}"
 done

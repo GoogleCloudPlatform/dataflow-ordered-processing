@@ -1,3 +1,7 @@
 **/target/**
 .idea
 .vscode
+/simulator-output.txt
+/last_query.json
+/performance-test/test-log.txt
+/test-log.txt

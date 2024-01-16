@@ -16,16 +16,31 @@
 # limitations under the License.
 #
 
+# This script accepts two optional positional parameters:
+# - initial number of workers
+# - any value of the second parameter will disable pipeline autoscaling
+
 set -e
 set -u
 
 source ./get-terraform-output.sh
+source ./get-pipeline-details.sh
 
-worker_parameters="--maxNumWorkers=3"
+initial_number_of_workers=1
+scaling_parameters="--maxNumWorkers=50"
 
-JOB_NAME="order-book-builder"
+if [[ "$#" -ge 1 ]]; then
+    initial_number_of_workers=$1
+fi
 
-EXPERIMENTS=enable_recommendations,enable_lightweight_streaming_update
+if [[ "$#" -ge 2 ]]; then
+    #  disable autoscaling
+    scaling_parameters="--autoscalingAlgorithm=NONE"
+fi
+
+worker_parameters="${scaling_parameters} --numWorkers=${initial_number_of_workers}"
+
+EXPERIMENTS="enable_recommendations,enable_lightweight_streaming_update"
 
 cd order-book-pipeline
 
@@ -33,7 +48,7 @@ set -x
 mvn -q compile exec:java -Dexec.args="--jobName=${JOB_NAME} \
  --runner=Dataflow \
  --project=${PROJECT_ID} \
- --region=${GCP_REGION} \
+ --region=${REGION} \
  --enableStreamingEngine \
  --diskSizeGb=30 \
  --serviceAccount=${DATAFLOW_SA} \

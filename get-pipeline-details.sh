@@ -1,7 +1,5 @@
-#!/usr/bin/env bash
-
 #
-# Copyright 2023 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,15 +14,4 @@
 # limitations under the License.
 #
 
-set -e
-set -u
-
-source ./get-terraform-output.sh
-
-./run-simulator.sh \
-  --ordertopic ${ORDER_TOPIC} \
-  --marketdepthtopic ${MARKET_DEPTH_TOPIC} \
-  --region ${REGION} \
-  --limit 50000000 \
-  --contracts 3000
-
+JOB_NAME="order-book-builder"
