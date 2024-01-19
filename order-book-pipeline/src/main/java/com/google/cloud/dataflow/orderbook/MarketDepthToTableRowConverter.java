@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
+import org.joda.time.Instant;
 
 public class MarketDepthToTableRowConverter implements
     SerializableFunction<KV<SessionContractKey, MarketDepth>, TableRow> {
@@ -36,6 +37,7 @@ public class MarketDepthToTableRowConverter implements
     result.set("contract_sequence_id", marketDepth.getContractSeqId());
     result.set("bid_count", marketDepth.getBidsCount());
     result.set("offer_count", marketDepth.getOffersCount());
+    result.set("event_ts", Instant.ofEpochMilli(marketDepth.getTimestampMS()));
 
     if (marketDepth.getBidsCount() > 0) {
       result.set("bids", getPriceQuantityRepeatedRows(marketDepth.getBidsList()));

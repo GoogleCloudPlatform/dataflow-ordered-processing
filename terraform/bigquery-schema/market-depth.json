@@ -77,6 +77,11 @@
   },
   {
     "mode": "REQUIRED",
+    "name": "event_ts",
+    "type": "TIMESTAMP"
+  },
+  {
+    "mode": "REQUIRED",
     "name": "ingest_ts",
     "type": "TIMESTAMP",
     "defaultValueExpression": "CURRENT_TIMESTAMP()"

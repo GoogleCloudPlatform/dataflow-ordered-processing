@@ -143,6 +143,47 @@ ORDER BY contract_sequence_id DESC) <= 5
 ORDER BY contract_id, contract_sequence_id DESC LIMIT 300
 ```
 
+### See the end-to-end processing performance (in seconds) for the order book
+
+These latencies represent the differences between the time the data was generated in the simulator
+to the time the data became available for querying in BigQuery. There are a number of factors
+affecting these latencies - the delays in publishing the event via Pub/Sub, Dataflow autoscaling
+events, percentage of the events processed out of order, and frequency of flushes in the BigQueryIO.
+
+```sql
+WITH last_session_latencies AS (SELECT APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_ts, event_ts, SECOND),
+                                                        100) quantiles
+                                FROM `ordered_processing_demo.market_depth`
+                                WHERE session_id = (SELECT DISTINCT session_id
+                                                    FROM `ordered_processing_demo.processing_status`
+                                                    ORDER BY session_id DESC
+   LIMIT 1)
+   )
+SELECT quantiles[OFFSET(0)] AS min,
+  quantiles[
+OFFSET(20)] AS percentile20, quantiles[OFFSET(50)] AS median, quantiles[OFFSET(90)] AS percentile90, quantiles[OFFSET(100)] AS max,
+FROM last_session_latencies
+```
+
+### End-to-end processing performance (in seconds) for the orders
+
+Similar to the market depth performance, but in this case orders are saved directly into BigQuery.
+
+```sql
+WITH last_session_latencies AS (SELECT APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_ts, event_ts, SECOND),
+                                                        100) quantiles
+                                FROM `ordered_processing_demo.order_event`
+                                WHERE session_id = (SELECT DISTINCT session_id
+                                                    FROM `ordered_processing_demo.processing_status`
+                                                    ORDER BY session_id DESC
+   LIMIT 1)
+   )
+SELECT quantiles[OFFSET(0)] AS min,
+  quantiles[
+OFFSET(20)] AS percentile20, quantiles[OFFSET(50)] AS median, quantiles[OFFSET(90)] AS percentile90, quantiles[OFFSET(100)] AS max,
+FROM last_session_latencies
+```
+
 ## Stop the pipeline
 
 You can run multiple, or parallel, simulator runs to see how the pipeline works. Once you are done,
