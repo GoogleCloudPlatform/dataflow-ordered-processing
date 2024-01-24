@@ -85,7 +85,7 @@ public abstract class OrderedEventProcessor<Event, EventKey, Result, State exten
     return new AutoValue_OrderedEventProcessor<>(eventExaminer, null /* no event coder */,
         stateCoder, keyCoder, resultTypeCoder,
         DEFAULT_STATUS_UPDATE_FREQUENCY_SECONDS, DEFAULT_PRODUCE_STATUS_UPDATE_ON_EVERY_EVENT,
-        DEFAULT_PRODUCE_DIAGNOSTIC_EVENTS, DEFAULT_MAX_ELEMENTS_TO_OUTPUT);
+        DEFAULT_PRODUCE_DIAGNOSTIC_EVENTS, DEFAULT_MAX_ELEMENTS_TO_OUTPUT, null);
   }
 
   /**
@@ -107,9 +107,17 @@ public abstract class OrderedEventProcessor<Event, EventKey, Result, State exten
     return new AutoValue_OrderedEventProcessor<>(eventExaminer, eventCoder,
         stateCoder, keyCoder, resultCoder,
         DEFAULT_STATUS_UPDATE_FREQUENCY_SECONDS, DEFAULT_PRODUCE_STATUS_UPDATE_ON_EVERY_EVENT,
-        DEFAULT_PRODUCE_DIAGNOSTIC_EVENTS, DEFAULT_MAX_ELEMENTS_TO_OUTPUT);
+        DEFAULT_PRODUCE_DIAGNOSTIC_EVENTS, DEFAULT_MAX_ELEMENTS_TO_OUTPUT, null);
   }
 
+  public static <EventType, KeyType, ResultType, StateType extends MutableState<EventType, ResultType>> OrderedEventProcessor<EventType, KeyType, ResultType, StateType> create(
+      OrderedProcessingHandler handler) {
+    return new AutoValue_OrderedEventProcessor<>(
+        handler.getEventExaminer(), null,
+        null, null, null,
+        handler.getStatusFrequencyUpdateSeconds(), handler.isProduceStatusUpdateOnEveryEvent(),
+        DEFAULT_PRODUCE_DIAGNOSTIC_EVENTS, handler.getMaxResultCountPerBundle(), handler);
+  }
 
   /**
    * Provide a custom status update frequency
@@ -124,7 +132,7 @@ public abstract class OrderedEventProcessor<Event, EventKey, Result, State exten
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
         this.getResultCoder(), seconds,
         this.isProduceStatusUpdateOnEveryEvent(), this.isProduceDiagnosticEvents(),
-        this.getMaxNumberOfResultsPerOutput());
+        this.getMaxNumberOfResultsPerOutput(), this.getHandler());
   }
 
   public OrderedEventProcessor<Event, EventKey, Result, State> produceDiagnosticEvents(
@@ -133,7 +141,7 @@ public abstract class OrderedEventProcessor<Event, EventKey, Result, State exten
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
         this.getResultCoder(),
         this.getStatusUpdateFrequencySeconds(), this.isProduceStatusUpdateOnEveryEvent(),
-        produceDiagnosticEvents, this.getMaxNumberOfResultsPerOutput());
+        produceDiagnosticEvents, this.getMaxNumberOfResultsPerOutput(), this.getHandler());
   }
 
   /**
@@ -146,7 +154,7 @@ public abstract class OrderedEventProcessor<Event, EventKey, Result, State exten
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
         this.getResultCoder(),
         this.getStatusUpdateFrequencySeconds(), value, this.isProduceDiagnosticEvents(),
-        this.getMaxNumberOfResultsPerOutput());
+        this.getMaxNumberOfResultsPerOutput(), this.getHandler());
   }
 
   public OrderedEventProcessor<Event, EventKey, Result, State> withMaxResultsPerOutput(
@@ -155,7 +163,7 @@ public abstract class OrderedEventProcessor<Event, EventKey, Result, State exten
         this.getEventExaminer(), this.getEventCoder(), this.getStateCoder(), this.getKeyCoder(),
         this.getResultCoder(),
         this.getStatusUpdateFrequencySeconds(), this.isProduceStatusUpdateOnEveryEvent(),
-        this.isProduceDiagnosticEvents(), maxResultsPerOutput);
+        this.isProduceDiagnosticEvents(), maxResultsPerOutput, this.getHandler());
   }
 
   abstract EventExaminer<Event, State> getEventExaminer();
@@ -178,6 +186,9 @@ public abstract class OrderedEventProcessor<Event, EventKey, Result, State exten
 
   abstract long getMaxNumberOfResultsPerOutput();
 
+  @Nullable
+  abstract OrderedProcessingHandler getHandler();
+
   @Override
   public OrderedEventProcessorResult<EventKey, Result, Event> expand(
       PCollection<KV<EventKey, KV<Long, Event>>> input) {
@@ -195,6 +206,12 @@ public abstract class OrderedEventProcessor<Event, EventKey, Result, State exten
     };
 
     Coder<EventKey> keyCoder = getKeyCoder();
+    OrderedProcessingHandler handler = getHandler();
+    Pipeline pipeline = input.getPipeline();
+
+    if (keyCoder == null && handler != null) {
+      keyCoder = handler.getKeyCoder(pipeline);
+    }
     if (keyCoder == null) {
       // Assume that the default key coder is used and use the key coder from it.
       keyCoder = ((KvCoder<EventKey, KV<Long, Event>>) input.getCoder()).getKeyCoder();
@@ -220,14 +237,14 @@ public abstract class OrderedEventProcessor<Event, EventKey, Result, State exten
 
     KvCoder<EventKey, Result> mainOutputCoder = KvCoder.of(keyCoder, getResultCoder());
     KvCoder<EventKey, OrderedProcessingStatus> processingStatusCoder = KvCoder.of(keyCoder,
-        getOrderedProcessingStatusCoder(input.getPipeline()));
+        getOrderedProcessingStatusCoder(pipeline));
     KvCoder<EventKey, OrderedProcessingDiagnosticEvent> diagnosticOutputCoder = KvCoder.of(keyCoder,
-        getOrderedProcessingDiagnosticsCoder(input.getPipeline()));
+        getOrderedProcessingDiagnosticsCoder(pipeline));
     KvCoder<EventKey, KV<Long, UnprocessedEvent<Event>>> unprocessedEventsCoder = KvCoder.of(
         keyCoder,
         KvCoder.of(VarLongCoder.of(), new UnprocessedEventCoder<>(eventCoder)));
     return new OrderedEventProcessorResult<>(
-        input.getPipeline(),
+        pipeline,
         processingResult.get(mainOutput).setCoder(mainOutputCoder),
         mainOutput,
         processingResult.get(statusOutput).setCoder(processingStatusCoder),
