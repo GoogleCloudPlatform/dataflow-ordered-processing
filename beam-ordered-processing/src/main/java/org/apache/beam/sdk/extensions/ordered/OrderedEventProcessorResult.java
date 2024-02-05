@@ -44,9 +44,6 @@ public class OrderedEventProcessorResult<Key, Result, Event> implements POutput 
   private final PCollection<KV<Key, OrderedProcessingStatus>> eventProcessingStatusPCollection;
   private final TupleTag<KV<Key, OrderedProcessingStatus>> eventProcessingStatusTupleTag;
 
-  private final PCollection<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticsEventPCollection;
-  private final TupleTag<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticsTupleTag;
-
   private final PCollection<KV<Key, KV<Long, UnprocessedEvent<Event>>>> unprocessedEventPCollection;
   private final TupleTag<KV<Key, KV<Long, UnprocessedEvent<Event>>>> unprocessedEventTupleTag;
 
@@ -55,18 +52,14 @@ public class OrderedEventProcessorResult<Key, Result, Event> implements POutput 
       TupleTag<KV<Key, Result>> outputPCollectionTupleTag,
       PCollection<KV<Key, OrderedProcessingStatus>> eventProcessingStatusPCollection,
       TupleTag<KV<Key, OrderedProcessingStatus>> eventProcessingStatusTupleTag,
-      PCollection<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticsEventPCollection,
-      TupleTag<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticsEventTupleTag,
       PCollection<KV<Key, KV<Long, UnprocessedEvent<Event>>>> unprocessedEventPCollection,
       TupleTag<KV<Key, KV<Long, UnprocessedEvent<Event>>>> unprocessedEventTupleTag) {
+
+    this.pipeline = pipeline;
     this.outputPCollection = outputPCollection;
     this.outputPCollectionTupleTag = outputPCollectionTupleTag;
     this.eventProcessingStatusPCollection = eventProcessingStatusPCollection;
     this.eventProcessingStatusTupleTag = eventProcessingStatusTupleTag;
-    this.diagnosticsEventPCollection = diagnosticsEventPCollection;
-    this.diagnosticsTupleTag = diagnosticsEventTupleTag;
-
-    this.pipeline = pipeline;
     this.unprocessedEventPCollection = unprocessedEventPCollection;
     this.unprocessedEventTupleTag = unprocessedEventTupleTag;
   }
@@ -81,7 +74,8 @@ public class OrderedEventProcessorResult<Key, Result, Event> implements POutput 
   @Override
   public Map<TupleTag<?>, PValue> expand() {
     return ImmutableMap.of(eventProcessingStatusTupleTag, eventProcessingStatusPCollection,
-        outputPCollectionTupleTag, outputPCollection);
+        outputPCollectionTupleTag, outputPCollection, unprocessedEventTupleTag,
+        unprocessedEvents());
   }
 
   @Override
@@ -102,10 +96,6 @@ public class OrderedEventProcessorResult<Key, Result, Event> implements POutput 
    */
   public PCollection<KV<Key, Result>> output() {
     return outputPCollection;
-  }
-
-  public PCollection<KV<Key, OrderedProcessingDiagnosticEvent>> diagnosticEvents() {
-    return diagnosticsEventPCollection;
   }
 
   public PCollection<KV<Key, KV<Long, UnprocessedEvent<Event>>>> unprocessedEvents() {

@@ -16,24 +16,11 @@
 
 package org.apache.beam.sdk.extensions.ordered;
 
-import com.google.auto.value.AutoValue;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import org.apache.beam.sdk.coders.CannotProvideCoderException;
-import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.coders.DefaultCoder;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
-import org.apache.beam.sdk.coders.VarIntCoder;
-import org.apache.beam.sdk.coders.VarLongCoder;
 import org.apache.beam.sdk.extensions.ordered.UnprocessedEvent.Reason;
-import org.apache.beam.sdk.schemas.AutoValueSchema;
-import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.testing.TestStream;
@@ -41,9 +28,6 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.checkerframework.checker.initialization.qual.Initialized;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.junit.Rule;
@@ -61,145 +45,6 @@ public class OrderedEventProcessorTest {
   @Rule
   public final transient TestPipeline p = TestPipeline.create();
 
-  @DefaultCoder(StringBufferStateCoder.class)
-  public static class StringBufferState implements MutableState<String, String> {
-
-    private int emissionFrequency = 1;
-    private long currentlyEmittedElementNumber = 0L;
-
-    public StringBufferState(String initialEvent, int emissionFrequency) {
-      this.emissionFrequency = emissionFrequency;
-      mutate(initialEvent);
-    }
-
-    final private StringBuilder sb = new StringBuilder();
-
-    @Override
-    public void mutate(String event) {
-      sb.append(event);
-    }
-
-    @Override
-    public String produceResult() {
-      return currentlyEmittedElementNumber++ % emissionFrequency == 0 ? sb.toString() : null;
-    }
-
-    public String toString() {
-      return sb.toString();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (!(o instanceof StringBufferState)) {
-        return false;
-      }
-      StringBufferState that = (StringBufferState) o;
-      return emissionFrequency == that.emissionFrequency
-          && currentlyEmittedElementNumber == that.currentlyEmittedElementNumber && sb.toString()
-          .equals(that.sb.toString());
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(sb);
-    }
-  }
-
-  public static class StringBufferStateCoder extends Coder<StringBufferState> {
-
-    private static final Coder<String> STRING_CODER = StringUtf8Coder.of();
-    private static final Coder<Long> LONG_CODER = VarLongCoder.of();
-    private static final Coder<Integer> INT_CODER = VarIntCoder.of();
-
-    @Override
-    public void encode(StringBufferState value,
-        @UnknownKeyFor @NonNull @Initialized OutputStream outStream)
-        throws IOException {
-      INT_CODER.encode(value.emissionFrequency, outStream);
-      LONG_CODER.encode(value.currentlyEmittedElementNumber, outStream);
-      STRING_CODER.encode(value.sb.toString(), outStream);
-    }
-
-    @Override
-    public StringBufferState decode(@UnknownKeyFor @NonNull @Initialized InputStream inStream)
-        throws IOException {
-      int emissionFrequency = INT_CODER.decode(inStream);
-      long currentlyEmittedElementNumber = LONG_CODER.decode(inStream);
-      String decoded = STRING_CODER.decode(inStream);
-      StringBufferState result = new StringBufferState(decoded, emissionFrequency);
-      result.currentlyEmittedElementNumber = currentlyEmittedElementNumber;
-      return result;
-    }
-
-    @Override
-    public @UnknownKeyFor @NonNull @Initialized List<? extends @UnknownKeyFor @NonNull @Initialized Coder<@UnknownKeyFor @NonNull @Initialized ?>> getCoderArguments() {
-      return List.of();
-    }
-
-    @Override
-    public void verifyDeterministic() {
-
-    }
-
-    @Override
-    public boolean consistentWithEquals() {
-      return true;
-    }
-
-    @Override
-    public @UnknownKeyFor @NonNull @Initialized Object structuralValue(StringBufferState value) {
-      return super.structuralValue(value);
-    }
-  }
-
-  static class StringBufferEventExaminer implements EventExaminer<String, StringBufferState> {
-
-    public static final String LAST_INPUT = "z";
-    private final long initialSequence;
-    private final int emissionFrequency;
-
-
-    public StringBufferEventExaminer(long initialSequence, int emissionFrequency) {
-      this.initialSequence = initialSequence;
-      this.emissionFrequency = emissionFrequency;
-    }
-
-    @Override
-    public boolean isInitialEvent(long sequenceNumber, String input) {
-      return sequenceNumber == initialSequence;
-    }
-
-    @Override
-    public StringBufferState createStateOnInitialEvent(String input) {
-      return new StringBufferState(
-          input,
-          emissionFrequency);
-    }
-
-    @Override
-    public boolean isLastEvent(long sequenceNumber, String input) {
-      return input.equals(LAST_INPUT);
-    }
-  }
-
-
-  @DefaultSchema(AutoValueSchema.class)
-  @AutoValue
-  public abstract static class Event implements Serializable {
-
-    public static Event create(long sequence, String id, String value) {
-      return new AutoValue_OrderedEventProcessorTest_Event(sequence, id, value);
-    }
-
-    public abstract long getSequence();
-
-    public abstract String getId();
-
-    public abstract String getValue();
-  }
 
   static class MapEventsToKV extends DoFn<Event, KV<String, KV<Long, String>>> {
 
@@ -555,23 +400,21 @@ public class OrderedEventProcessorTest {
     PCollection<KV<String, KV<Long, String>>> input = p.apply("Create Events",
         messageFlow.advanceWatermarkToInfinity()).apply("To KV", ParDo.of(new MapEventsToKV()));
 
-    Coder<StringBufferState> stateCoder = p.getCoderRegistry().getCoder(StringBufferState.class);
-    Coder<String> eventCoder = StringUtf8Coder.of();
-    Coder<String> keyCoder = StringUtf8Coder.of();
-    Coder<String> resultCoder = StringUtf8Coder.of();
-
-    OrderedEventProcessor<String, String, String, StringBufferState> orderedEventProcessor = OrderedEventProcessor.create(
-            new StringBufferEventExaminer(initialSequence, emissionFrequency),
-            eventCoder, keyCoder, stateCoder, resultCoder)
-        .withMaxResultsPerOutput(maxResultsPerOutput);
-
+    StringBufferOrderedProcessingHandler handler = new StringBufferOrderedProcessingHandler(
+        emissionFrequency, initialSequence);
+    handler.setMaxOutputElementsPerBundle(maxResultsPerOutput);
     if (produceStatusOnEveryEvent) {
-      orderedEventProcessor = orderedEventProcessor.produceStatusUpdatesOnEveryEvent(true)
-          // This disables status updates emitted on timers. Needed for simpler testing when per event update is needed.
-          .withStatusUpdateFrequencySeconds(-1);
+      handler.setProduceStatusUpdateOnEveryEvent(true);
+      // This disables status updates emitted on timers. Needed for simpler testing when per event update is needed.
+      handler.setStatusUpdateFrequency(null);
     } else {
-      orderedEventProcessor = orderedEventProcessor.withStatusUpdateFrequencySeconds(300);
+      handler.setStatusUpdateFrequency(Duration.standardSeconds(300));
     }
+    OrderedEventProcessor<String, String, String, StringBufferState> orderedEventProcessor =
+        OrderedEventProcessor.create(handler);
+//            new StringBufferEventExaminer(initialSequence, emissionFrequency),
+//            eventCoder, keyCoder, stateCoder, resultCoder)
+//        .withMaxResultsPerOutput(maxResultsPerOutput);
 
     OrderedEventProcessorResult<String, String, String> processingResult = input.apply(
         "Process Events",

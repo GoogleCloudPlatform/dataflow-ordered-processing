@@ -22,10 +22,12 @@ import com.google.cloud.orderbook.model.OrderBookEvent;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.extensions.ordered.OrderedEventProcessor;
 import org.apache.beam.sdk.extensions.ordered.OrderedEventProcessorResult;
+import org.apache.beam.sdk.extensions.ordered.OrderedProcessingHandler;
 import org.apache.beam.sdk.extensions.protobuf.ProtoCoder;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.joda.time.Duration;
 
 public class OrderBookProducer extends
     PTransform<PCollection<OrderBookEvent>, OrderedEventProcessorResult<SessionContractKey, MarketDepth, OrderBookEvent>> {
@@ -34,11 +36,14 @@ public class OrderBookProducer extends
   private final boolean withTrade;
 
   private boolean produceStatusUpdatesOnEveryEvent = false;
-  private int statusUpdateFrequency = 0;
+  private Duration statusUpdateFrequency = null;
 
-  public OrderBookProducer(int depth, boolean withTrade) {
+  private int maxElementsPerBundle;
+
+  public OrderBookProducer(int depth, boolean withTrade, int maxElementsPerBundle) {
     this.depth = depth;
     this.withTrade = withTrade;
+    this.maxElementsPerBundle = maxElementsPerBundle;
   }
 
   public OrderBookProducer produceStatusUpdatesOnEveryEvent() {
@@ -46,8 +51,8 @@ public class OrderBookProducer extends
     return this;
   }
 
-  public OrderBookProducer produceStatusUpdatesInSeconds(int seconds) {
-    this.statusUpdateFrequency = seconds;
+  public OrderBookProducer withStatusUpdateFrequency(Duration duration) {
+    this.statusUpdateFrequency = duration;
     return this;
   }
 
@@ -61,20 +66,17 @@ public class OrderBookProducer extends
     input.getPipeline().getCoderRegistry()
         .registerCoderForClass(SessionContractKey.class, SessionContractKeyCoder.of());
 
-    OrderedEventProcessor<OrderBookEvent, SessionContractKey, MarketDepth, OrderBookMutableState> orderedProcessor =
-        OrderedEventProcessor.create(
-                new OrderBookEventExaminer(depth, withTrade),
-                keyCoder, stateCoder,
-                marketDepthCoder)
-            .withMaxResultsPerOutput(10000);
-    if (produceStatusUpdatesOnEveryEvent) {
-      orderedProcessor = orderedProcessor.produceStatusUpdatesOnEveryEvent(true);
-    }
+    OrderedProcessingHandler handler = new OrderBookOrderedProcessingHandler(depth, withTrade);
+    handler.setProduceStatusUpdateOnEveryEvent(produceStatusUpdatesOnEveryEvent);
+    handler.setMaxOutputElementsPerBundle(maxElementsPerBundle);
+    handler.setStatusUpdateFrequency(statusUpdateFrequency);
 
-    orderedProcessor = orderedProcessor.withStatusUpdateFrequencySeconds(statusUpdateFrequency);
+    OrderedEventProcessor<OrderBookEvent, SessionContractKey, MarketDepth, OrderBookMutableState> orderedProcessor =
+        OrderedEventProcessor.create(handler);
 
     return input
         .apply("Convert to KV", ParDo.of(new ConvertOrderBookEventToKV()))
         .apply("Produce OrderBook", orderedProcessor);
   }
+
 }

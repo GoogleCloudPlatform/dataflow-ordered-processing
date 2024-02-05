@@ -81,6 +81,12 @@ public class OrderBookProcessingPipeline {
     boolean isIncludeLastTrade();
 
     void setIncludeLastTrade(boolean value);
+
+    @Description("Maximum number of elements to output per each bundle. Total size of the data is not not exceed 2GB.")
+    @Default.Integer(10000)
+    int getMaxOutputElementsPerBundle();
+
+    void setMaxOutputElementsPerBundle(int value);
   }
 
   public static void main(String[] args) {
@@ -101,7 +107,8 @@ public class OrderBookProcessingPipeline {
     OrderedEventProcessorResult<SessionContractKey, MarketDepth, OrderBookEvent> processingResults = orderBookEvents
         .apply("Build Order Book", new OrderBookProducer(
             options.getOrderBookDepth(),
-            options.isIncludeLastTrade()).produceStatusUpdatesOnEveryEvent());
+            options.isIncludeLastTrade(),
+            options.getMaxOutputElementsPerBundle()).produceStatusUpdatesOnEveryEvent());
 
     storeInBigQuery(processingResults.output(), options.getMarketDepthTable(), "Market Depth",
         new MarketDepthToTableRowConverter());

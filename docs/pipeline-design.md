@@ -66,6 +66,24 @@ ready to be processed. There are three coders used by the transform:
 * Key
   coder - [SessionContractKeyCoder in SessionContractKey class](/order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/SessionContractKey.java).
 
+### Create a handler to tie all the above together
+
+The OrderedEventProcessor is convigured by providing a handler which must extend
+the [OrderedProcessingHandler](../beam-ordered-processing/src/main/java/org/apache/beam/sdk/extensions/ordered/OrderedProcessingHandler.java)
+class. That class (in this
+demo, [OrderBookOrderedProcessingHandler](../order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/OrderBookOrderedProcessingHandler.java))
+provides default implementations for a number of methods. The implementing class
+must provide two methods:
+
+* a constructor which provides the parent class' constructor with the classes of the event, key,
+  state, and the result. The parent class will use this information to attempt to determine the
+  coders for these classes.
+* `getEventExaminer` method to return a class implementing the `EventExaminer` interface.
+
+You can override the default implementations of the methods to supply custom coders (different from
+the default registered with the pipeline), change the processing status notification emission
+frequency, buffering parameters, etc.
+
 ### Create a custom transform to wrap the OrderedEventProcessing transform
 
 This is an optional step, and technically you don't need to do it. But if you do - the main pipeline
