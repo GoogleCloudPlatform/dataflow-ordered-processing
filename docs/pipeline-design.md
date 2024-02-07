@@ -27,7 +27,8 @@ puts our incoming PCollection into the required shape.
 ### Create a class to wrap your business logic of processing events
 
 This class needs to
-implement [MutableState interface](/beam-ordered-processing/src/main/java/org/apache/), and has to
+implement [MutableState interface](/beam-ordered-processing/src/main/java/org/apache/beam/sdk/extensions/ordered/MutableState.java),
+and has to
 implement two methods:
 
 * `mutate` will be called by the OrderedEventProcessor in the ordered sequence
@@ -68,7 +69,7 @@ ready to be processed. There are three coders used by the transform:
 
 ### Create a handler to tie all the above together
 
-The OrderedEventProcessor is convigured by providing a handler which must extend
+The OrderedEventProcessor is configured by providing a handler which must extend
 the [OrderedProcessingHandler](../beam-ordered-processing/src/main/java/org/apache/beam/sdk/extensions/ordered/OrderedProcessingHandler.java)
 class. That class (in this
 demo, [OrderBookOrderedProcessingHandler](../order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/OrderBookOrderedProcessingHandler.java))
@@ -95,7 +96,7 @@ is used to hide some mechanics of using the OrderedEventProcessor.
 
 Our demo uses BigQuery tables to store the market depths produced by the order book builder,
 processing statuses output by the OrderedEventProcessor and the source order events. You
-would need to code classes that tranform these classes to TableRows. An example of these class
+would need to code classes that transform these classes to TableRows. An example of these class
 is [MarketDepthToTableRowConverter](/order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/MarketDepthToTableRowConverter.java).
 
 ### Code the pipeline
