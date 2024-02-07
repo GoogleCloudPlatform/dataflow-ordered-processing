@@ -14,7 +14,6 @@ of the pipeline.
 
 ## Use Case
 
-[//]: # (TODO: validate the description)
 The use case is maintaining an [order book](https://en.wikipedia.org/wiki/Order_book) of security
 order events (buy, sell or cancellation) and producing the security's market depth on every trade.
 
@@ -24,7 +23,7 @@ analyzed in the same pipeline to build a streaming analytics solution.
 Use case's is implemented as a standalone Java module ([business model](business-model)), with the
 core logic residing in
 the [OrderBookBuilder](business-model/src/main/java/com/google/cloud/orderbook/OrderBookBuilder.java)
-class. The [simulator](simulator) package has utilities to generate order book events simulating
+class. The [simulator](simulator) module has utilities to generate order book events simulating
 financial institution trading sessions.
 
 ## Pipeline Design

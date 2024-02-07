@@ -27,7 +27,8 @@ puts our incoming PCollection into the required shape.
 ### Create a class to wrap your business logic of processing events
 
 This class needs to
-implement [MutableState interface](/beam-ordered-processing/src/main/java/org/apache/), and has to
+implement [MutableState interface](/beam-ordered-processing/src/main/java/org/apache/beam/sdk/extensions/ordered/MutableState.java),
+and has to
 implement two methods:
 
 * `mutate` will be called by the OrderedEventProcessor in the ordered sequence
@@ -66,6 +67,24 @@ ready to be processed. There are three coders used by the transform:
 * Key
   coder - [SessionContractKeyCoder in SessionContractKey class](/order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/SessionContractKey.java).
 
+### Create a handler to tie all the above together
+
+The OrderedEventProcessor is configured by providing a handler which must extend
+the [OrderedProcessingHandler](../beam-ordered-processing/src/main/java/org/apache/beam/sdk/extensions/ordered/OrderedProcessingHandler.java)
+class. That class (in this
+demo, [OrderBookOrderedProcessingHandler](../order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/OrderBookOrderedProcessingHandler.java))
+provides default implementations for a number of methods. The implementing class
+must provide two methods:
+
+* a constructor which provides the parent class' constructor with the classes of the event, key,
+  state, and the result. The parent class will use this information to attempt to determine the
+  coders for these classes.
+* `getEventExaminer` method to return a class implementing the `EventExaminer` interface.
+
+You can override the default implementations of the methods to supply custom coders (different from
+the default registered with the pipeline), change the processing status notification emission
+frequency, buffering parameters, etc.
+
 ### Create a custom transform to wrap the OrderedEventProcessing transform
 
 This is an optional step, and technically you don't need to do it. But if you do - the main pipeline
@@ -77,7 +96,7 @@ is used to hide some mechanics of using the OrderedEventProcessor.
 
 Our demo uses BigQuery tables to store the market depths produced by the order book builder,
 processing statuses output by the OrderedEventProcessor and the source order events. You
-would need to code classes that tranform these classes to TableRows. An example of these class
+would need to code classes that transform these classes to TableRows. An example of these class
 is [MarketDepthToTableRowConverter](/order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/MarketDepthToTableRowConverter.java).
 
 ### Code the pipeline
