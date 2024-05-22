@@ -20,8 +20,10 @@ import com.google.cloud.orderbook.OrderBookBuilder;
 import com.google.cloud.orderbook.model.MarketDepth;
 import com.google.cloud.orderbook.model.OrderBookEvent;
 import java.util.Map;
+import org.apache.beam.sdk.coders.DefaultCoder;
 import org.apache.beam.sdk.extensions.ordered.MutableState;
 
+@DefaultCoder(OrderBookCoder.class)
 public class OrderBookMutableState implements MutableState<OrderBookEvent, MarketDepth> {
 
   public int getDepth() {
@@ -35,7 +37,7 @@ public class OrderBookMutableState implements MutableState<OrderBookEvent, Marke
   private int depth;
   private boolean withTrade;
 
-  private OrderBookBuilder orderBookBuilder;
+  private transient OrderBookBuilder orderBookBuilder;
 
   OrderBookMutableState(int depth, boolean withTrade) {
     this.depth = depth;
