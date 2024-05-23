@@ -59,10 +59,6 @@ public class OrderBookProducer extends
   @Override
   public OrderedEventProcessorResult<SessionContractKey, MarketDepth, OrderBookEvent> expand(
       PCollection<OrderBookEvent> input) {
-    Coder<OrderBookMutableState> stateCoder = OrderBookCoder.of();
-    Coder<SessionContractKey> keyCoder = SessionContractKeyCoder.of();
-    Coder<MarketDepth> marketDepthCoder = ProtoCoder.of(MarketDepth.class);
-
     input.getPipeline().getCoderRegistry()
         .registerCoderForClass(SessionContractKey.class, SessionContractKeyCoder.of());
 
