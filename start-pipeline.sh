@@ -53,6 +53,8 @@ mvn -q compile exec:java -Dexec.args="--jobName=${JOB_NAME} \
  --diskSizeGb=30 \
  --serviceAccount=${DATAFLOW_SA} \
  --experiments=${EXPERIMENTS} \
+ --dataflowServiceOptions=enable_streaming_engine_resource_based_billing \
+ --jdkAddOpenModules=java.base/java.lang=ALL-UNNAMED \
  --marketDepthTable=${PROJECT_ID}.${BQ_DATASET}.${MARKET_DEPTH_TABLE_NAME} \
  --processingStatusTable=${PROJECT_ID}.${BQ_DATASET}.${PROCESSING_STATUS_TABLE_NAME} \
  --orderEventTable=${PROJECT_ID}.${BQ_DATASET}.${ORDER_EVENT_TABLE_NAME} \

@@ -24,23 +24,28 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.coders.BooleanCoder;
+import org.apache.beam.sdk.coders.CannotProvideCoderException;
 import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.CoderProvider;
 import org.apache.beam.sdk.coders.MapCoder;
 import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.beam.sdk.coders.VarLongCoder;
 import org.apache.beam.sdk.extensions.protobuf.ProtoCoder;
+import org.apache.beam.sdk.values.TypeDescriptor;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 
 public class OrderBookCoder extends Coder<OrderBookMutableState> {
+
   private VarIntCoder intCoder = VarIntCoder.of();
   private BooleanCoder booleanCoder = BooleanCoder.of();
   private MapCoder<Long, Long> mapCoder = MapCoder.of(VarLongCoder.of(), VarLongCoder.of());
 
   private Coder<OrderBookEvent> orderBookEventCoder = ProtoCoder.of(OrderBookEvent.class);
 
-  private OrderBookCoder() {}
+  private OrderBookCoder() {
+  }
 
   /**
    * Returns a {@link OrderBookCoder} with the default settings.
@@ -63,7 +68,8 @@ public class OrderBookCoder extends Coder<OrderBookMutableState> {
     boolean withTrade = booleanCoder.decode(inStream);
     Map<Long, Long> prices = mapCoder.decode(inStream);
     OrderBookEvent lastOrderBookEvent = orderBookEventCoder.decode(inStream);
-    OrderBookMutableState orderBookMutableState = new OrderBookMutableState(depth, withTrade, prices, lastOrderBookEvent);
+    OrderBookMutableState orderBookMutableState = new OrderBookMutableState(depth, withTrade,
+        prices, lastOrderBookEvent);
     return orderBookMutableState;
   }
 
@@ -76,5 +82,24 @@ public class OrderBookCoder extends Coder<OrderBookMutableState> {
   public void verifyDeterministic()
       throws @UnknownKeyFor @NonNull @Initialized NonDeterministicException {
 
+  }
+
+  public static CoderProvider getCoderProvider() {
+    return new OrderBookCoderProvider();
+  }
+
+  static class OrderBookCoderProvider extends CoderProvider {
+
+    @Override
+    public <T> Coder<T> coderFor(TypeDescriptor<T> typeDescriptor,
+        List<? extends Coder<?>> componentCoders)
+        throws CannotProvideCoderException {
+      if (typeDescriptor.getRawType().equals(OrderBookMutableState.class)) {
+        return (Coder<T>) OrderBookCoder.of();
+      } else {
+        throw new CannotProvideCoderException(
+            "Can only provide coder for " + OrderBookMutableState.class);
+      }
+    }
   }
 }

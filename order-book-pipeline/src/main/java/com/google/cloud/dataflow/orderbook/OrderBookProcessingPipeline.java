@@ -82,7 +82,7 @@ public class OrderBookProcessingPipeline {
 
     void setIncludeLastTrade(boolean value);
 
-    @Description("Maximum number of elements to output per each bundle. Total size of the data is not not exceed 2GB.")
+    @Description("Maximum number of elements to output per each bundle. Total size of the data is not exceed 2GB.")
     @Default.Integer(10000)
     int getMaxOutputElementsPerBundle();
 
