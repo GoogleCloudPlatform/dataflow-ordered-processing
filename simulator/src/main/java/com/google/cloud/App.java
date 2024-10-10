@@ -16,12 +16,6 @@
 
 package com.google.cloud;
 
-import java.io.IOException;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Iterator;
-import java.util.List;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
@@ -30,6 +24,12 @@ import com.google.cloud.orderbook.OrderBookBuilder;
 import com.google.cloud.orderbook.model.MarketDepth;
 import com.google.cloud.orderbook.model.OrderBookEvent;
 import com.google.cloud.simulator.Simulator;
+import java.io.IOException;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Iterator;
+import java.util.List;
 
 public class App {
 
@@ -57,6 +57,11 @@ public class App {
       "--duration"}, description = "Duration of the exchange before finishing (format in ISO-8601, e.g., PT2M for 2 minutes")
   private String duration = null;
 
+  @Parameter(names = {
+      "--globalsequence"}, description = "Use global sequence number rather than per symbol sequencing")
+  private boolean useGlobalSequence = false;
+
+
   // Related to PubSub
   @Parameter(names = {"--region"}, description = "Pub/Sub region to publish to")
   private String region = null;
@@ -76,7 +81,7 @@ public class App {
 
     try {
 
-      // Parse the user-specifiedc arguments
+      // Parse the user-specified arguments
       parser.parse(argv);
       if (app.help) {
         parser.usage();
@@ -97,9 +102,8 @@ public class App {
 
     // Runtime exception -- just show error
     catch (Exception e) {
+      System.out.println("Failed to run the simulator:");
       e.printStackTrace();
-      System.out.println(
-          String.format("Failed running: %s", e.getMessage()));
       System.exit(1);
     }
   }
@@ -166,7 +170,8 @@ public class App {
         contracts,
         100,
         seed,
-        degree);
+        degree,
+        useGlobalSequence);
   }
 
   /**
@@ -200,6 +205,10 @@ public class App {
 
     if (limit > 0) {
       builder.withMaxEvents(limit);
+    }
+
+    if (useGlobalSequence) {
+      builder.useGlobalSequence();
     }
 
     return builder.build();

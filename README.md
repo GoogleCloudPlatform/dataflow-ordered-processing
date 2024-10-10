@@ -20,7 +20,7 @@ order events (buy, sell or cancellation) and producing the security's market dep
 The market depth data can be saved to a persistent storage for and additional analysis or can be
 analyzed in the same pipeline to build a streaming analytics solution.
 
-Use case's is implemented as a standalone Java module ([business model](business-model)), with the
+Use case is implemented as a standalone Java module ([business model](business-model)), with the
 core logic residing in
 the [OrderBookBuilder](business-model/src/main/java/com/google/cloud/orderbook/OrderBookBuilder.java)
 class. The [simulator](simulator) module has utilities to generate order book events simulating
@@ -58,22 +58,41 @@ mvn clean install
 
 ## Running the demo
 
+Running the demo involves starting the simulator to generate a stream of fictitious orders, running
+a Dataflow pipeline to process the orders and output results in BigQuery and running SQL queries
+against the BigQuery tables to verify the results and see processing statistics.
+
+There are two separate processing modes for the pipeline, determined by how the sequence numbers
+per trades are generated. One mode is the per-key mode, where the sequence numbers increase
+contiguously for each contract. The other mode is the global mode, where there the order number is a
+global
+contiguouly increasing sequence number. The simulator and the pipeline need to run in the same mode,
+e.g., if the simulator is producing order sequence numbers in the global mode then the pipeline
+needs to run in the
+global sequence processing mode.
+
 ### Start the pipeline
 
 This pipeline was tested using the JDK 11. If you have multiple JDKs installed, please set
 the `JAVA_HOME` environment variable to point to the right JDK.
 
 ```shell
-./start-pipeline.sh
+./start-pipeline.sh per-key-sequence|global-sequence|
 ```
 
-### Run the test harness
+### Run the simulator
 
 This will start a simulator which will be generating synthetic orders and expected order book
-events:
+events in the per-key mode:
 
 ```shell
-./run-pubsub-simulator.sh
+./run-pubsub-simulator-per-key-sequence.sh
+```
+
+To turn the simulator in the global sequence mode:
+
+```shell
+./run-pubsub-simulator-global-sequence.sh
 ```
 
 ## Analyse the data
@@ -200,7 +219,7 @@ different pipeline parameters:
  ./run-perf-test.sh <number-of-contract> <total-number-of-orders> <number-of-inital-workers> <disable-horizontal-autoscaling>
 ```
 
-The first three parameters are required. Any value passed in forth parameter will disable the
+The first three parameters are required. Any value passed as the forth parameter will disable the
 autoscaling.
 
 The script will start the pipeline, wait for the workers to be ready to process the data, run the

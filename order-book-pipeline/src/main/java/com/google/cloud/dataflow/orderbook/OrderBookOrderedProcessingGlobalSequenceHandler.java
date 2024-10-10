@@ -23,15 +23,15 @@ import org.apache.beam.sdk.extensions.ordered.OrderedProcessingHandler;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 /**
- * Handler use for sequence-per-key processing.
+ * Handler use for global sequence processing.
  */
-class OrderBookOrderedProcessingHandler extends
+class OrderBookOrderedProcessingGlobalSequenceHandler extends
     OrderedProcessingHandler<OrderBookEvent, SessionContractKey, OrderBookMutableState, MarketDepth> {
 
   private final int depth;
   private final boolean withLastTrade;
 
-  public OrderBookOrderedProcessingHandler(int depth, boolean withLastTrade) {
+  public OrderBookOrderedProcessingGlobalSequenceHandler(int depth, boolean withLastTrade) {
     super(OrderBookEvent.class, SessionContractKey.class, OrderBookMutableState.class,
         MarketDepth.class);
     this.depth = depth;

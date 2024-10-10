@@ -16,23 +16,23 @@
 
 package com.google.cloud.orderbook;
 
+import com.google.cloud.orderbook.model.OrderBookEvent;
+import com.google.cloud.orderbook.model.OrderBookEvent.Side;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
-import com.google.cloud.orderbook.model.OrderBookEvent;
-import com.google.cloud.orderbook.model.OrderBookEvent.Side;
 
 public class MatcherContext implements Iterable<List<OrderBookEvent>> {
 
   enum TimeThrottleMode {
     /* Generate OrderBookEvents without throttling (no sleep),
      * and use the system time for the order events.
-    */
+     */
     UNTHROTTLED_EVENTS_SYSTEM_TIME,
 
     /* Generate OrderBookEvents without throttling (no sleep),
      * and generate a simulated time that is throttled at a certain rate
-    */
+     */
     UNTHROTTLED_EVENTS_THROTTLED_SIMULATED_TIME,
 
     /* Generate OrderBookEvents with throttling (sleep),
@@ -43,6 +43,8 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
 
   // Global Sequence ID
   private long nextSeqId = 1;
+
+  private boolean useGlobalSequence;
 
   // Queued producer -- used to synchronise the output of the matchers
   final private QueuedProducer<OrderBookEvent> que = new QueuedProducer<>();
@@ -62,7 +64,7 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
 
   // Maximum duration (optional)
   final private long maxDurationSeconds;
-  
+
   // Maximum number of events produced (optional)
   // Note this isn't strict -- once maxEvents is reached, shutdown will be initiated.
   // This means that slightly more events may be produced than maxEvents.
@@ -75,43 +77,60 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
 
   // MatcherContextBuilder
   public static class Builder {
+
     private final String sessionId;
     private final TimeThrottleMode mode;
     private final long eventsPerSecond;
+
+    private boolean useGlobalSequence;
+
     Builder(String sessionId, TimeThrottleMode mode, long eventsPerSecond) {
       this.sessionId = sessionId;
       this.mode = mode;
       this.eventsPerSecond = eventsPerSecond;
+      this.useGlobalSequence = false;
 
       if (eventsPerSecond > 0 && eventsPerSecond < MINIMUM_RATE) {
         throw new RuntimeException(
             String.format("Event rate must be at least %d", MINIMUM_RATE));
       }
     }
+
     private long startTimeMillis;
+
     public Builder withStartTimeMillis(long startTimeMillis) {
       this.startTimeMillis = startTimeMillis;
       return this;
     }
+
     private long maxSeconds;
+
     public Builder withMaxSeconds(long maxSeconds) {
       this.maxSeconds = maxSeconds;
       return this;
     }
+
     private long maxEvents;
+
     public Builder withMaxEvents(long maxEvents) {
       this.maxEvents = maxEvents;
       return this;
     }
 
+    public Builder useGlobalSequence() {
+      this.useGlobalSequence = true;
+      return this;
+    }
+
     public MatcherContext build() {
       return new MatcherContext(
-        mode,
-        sessionId,
-        eventsPerSecond,
-        startTimeMillis,
-        maxSeconds,
-        maxEvents);
+          mode,
+          sessionId,
+          eventsPerSecond,
+          startTimeMillis,
+          maxSeconds,
+          maxEvents,
+          useGlobalSequence);
     }
   }
 
@@ -134,7 +153,8 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
    * Recommended for batch data generation (Dataflow) or testing purposes.
    */
   static public Builder buildSimulated(String sessionId, long eventsPerSecond) {
-    return new Builder(sessionId, TimeThrottleMode.UNTHROTTLED_EVENTS_THROTTLED_SIMULATED_TIME, eventsPerSecond);
+    return new Builder(sessionId, TimeThrottleMode.UNTHROTTLED_EVENTS_THROTTLED_SIMULATED_TIME,
+        eventsPerSecond);
   }
 
   /*
@@ -147,7 +167,8 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
   }
 
   private MatcherContext(TimeThrottleMode mode, String sessionId, long eventsPerSecond,
-                         long startTimeMillis, long maxSeconds, long maxEvents) {
+      long startTimeMillis, long maxSeconds, long maxEvents,
+      boolean useGlobalSequence) {
     this.mode = mode;
     this.sessionId = sessionId;
     this.eventsPerBucket = eventsPerSecond / (1000 / MILLISECOND_BUCKET_SIZE);
@@ -155,6 +176,7 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
     this.nextBucketTime = startTimeMillis;
     this.maxDurationSeconds = maxSeconds;
     this.maxEvents = maxEvents;
+    this.useGlobalSequence = useGlobalSequence;
   }
 
   public void add(long delay, Callable<List<OrderBookEvent>> work) {
@@ -179,8 +201,8 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
     //
 
     // Count events in the bucket and total events
-    eventsInBucket ++;
-    totalEvents ++;
+    eventsInBucket++;
+    totalEvents++;
 
     // If bucket is full, need to delay and/or shift bucket
     if (eventsInBucket == eventsPerBucket) {
@@ -192,7 +214,8 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
         if (neededDelay > 0) {
           try {
             Thread.sleep(neededDelay);
-          } catch (InterruptedException e) {}
+          } catch (InterruptedException e) {
+          }
         }
       }
 
@@ -210,7 +233,7 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
 
     // Check if we need to shutdown the queue due to time
     if ((maxDurationSeconds > 0) &&
-        (eventTimeMillis - startTimeMillis)/1000 >= maxDurationSeconds) {
+        (eventTimeMillis - startTimeMillis) / 1000 >= maxDurationSeconds) {
       this.que.shutdown();
     }
 
@@ -225,33 +248,26 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
   OrderBookEvent.Builder buildFinalOrderBookEvent(long contractSeqId, long contractId) {
     long eventTimeMillis = getNextEventTimeMillis();
 
+    long currentGlobalSequence = nextSeqId++;
     return OrderBookEvent.newBuilder()
         .setTimestampMS(eventTimeMillis)
-        .setSeqId(nextSeqId++)
-        .setContractSeqId(contractSeqId)
+        .setSeqId(currentGlobalSequence)
+        .setContractSeqId(useGlobalSequence ? currentGlobalSequence : contractSeqId)
         .setContractId(contractId)
         .setLastMessage(false)
         .setSessionId(sessionId)
         .setLastContractMessage(true);
   }
 
-  public OrderBookEvent.Builder buildFinalOrderBookEvent() {
+  OrderBookEvent.Builder buildOrderBookEvent(OrderBookEvent.Type type, long contractSeqId,
+      long contractId, Order order) {
     long eventTimeMillis = getNextEventTimeMillis();
 
+    long currentGlobalSequence = nextSeqId++;
     return OrderBookEvent.newBuilder()
         .setTimestampMS(eventTimeMillis)
-        .setSeqId(nextSeqId++)
-        .setSessionId(sessionId)
-        .setLastMessage(true);
-  }
-
-  OrderBookEvent.Builder buildOrderBookEvent(OrderBookEvent.Type type, long contractSeqId, long contractId, Order order) {
-    long eventTimeMillis = getNextEventTimeMillis();
-
-    return OrderBookEvent.newBuilder()
-        .setTimestampMS(eventTimeMillis)
-        .setSeqId(nextSeqId++)
-        .setContractSeqId(contractSeqId)
+        .setSeqId(currentGlobalSequence)
+        .setContractSeqId(useGlobalSequence ? currentGlobalSequence : contractSeqId)
         .setContractId(contractId)
         .setLastMessage(false)
         .setSessionId(sessionId)
@@ -272,6 +288,7 @@ public class MatcherContext implements Iterable<List<OrderBookEvent>> {
   }
 
   private long currentOrderId = 1;
+
   public Order newOrder(Side side, long price, long quantity) {
     return new Order(currentOrderId++, side, price, quantity);
   }

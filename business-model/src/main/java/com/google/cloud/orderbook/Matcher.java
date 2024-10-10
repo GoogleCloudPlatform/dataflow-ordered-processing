@@ -68,43 +68,37 @@ public class Matcher {
   }
 
   final private TreeMap<OrderKey, Order> bidOrderList = new TreeMap<OrderKey, Order>(
-      new Comparator<OrderKey>() {
-        @Override
-        public int compare(OrderKey k0, OrderKey k1) {
-          if (k0.price > k1.price) {
-            return -1;
-          }
-          if (k0.price < k1.price) {
-            return 1;
-          }
-          if (k0.orderId < k1.orderId) {
-            return -1;
-          }
-          if (k0.orderId > k1.orderId) {
-            return 1;
-          }
-          return 0;
+      (k0, k1) -> {
+        if (k0.price > k1.price) {
+          return -1;
         }
+        if (k0.price < k1.price) {
+          return 1;
+        }
+        if (k0.orderId < k1.orderId) {
+          return -1;
+        }
+        if (k0.orderId > k1.orderId) {
+          return 1;
+        }
+        return 0;
       }
   );
   final private TreeMap<OrderKey, Order> askOrderList = new TreeMap<OrderKey, Order>(
-      new Comparator<OrderKey>() {
-        @Override
-        public int compare(OrderKey k0, OrderKey k1) {
-          if (k0.price < k1.price) {
-            return -1;
-          }
-          if (k0.price > k1.price) {
-            return 1;
-          }
-          if (k0.orderId < k1.orderId) {
-            return -1;
-          }
-          if (k0.orderId > k1.orderId) {
-            return 1;
-          }
-          return 0;
+      (k0, k1) -> {
+        if (k0.price < k1.price) {
+          return -1;
         }
+        if (k0.price > k1.price) {
+          return 1;
+        }
+        if (k0.orderId < k1.orderId) {
+          return -1;
+        }
+        if (k0.orderId > k1.orderId) {
+          return 1;
+        }
+        return 0;
       }
   );
 

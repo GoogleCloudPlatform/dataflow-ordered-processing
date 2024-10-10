@@ -24,8 +24,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.Callable;
-import java.lang.Math;
 
 /*
  * Simulator that generates orders against a matcher.
@@ -35,11 +33,11 @@ public class Simulator {
   /**
    * Create a complex (multiple contract) simulator.
    *
-   * @param context      MatcherContext for the context of the matching engine
-   * @param numContracts Number of contracts to generate
-   * @param midPrice     Starting mid price for all contracts
-   * @param seed         Random seed (0 = default randomization)
-   * @param degreeDist   Degree of uneven distribution (0 = unform, 1 = linear, 2 = power of 2, etc)
+   * @param context           MatcherContext for the context of the matching engine
+   * @param numContracts      Number of contracts to generate
+   * @param midPrice          Starting mid price for all contracts
+   * @param seed              Random seed (0 = default randomization)
+   * @param useGlobalSequence Use global sequence number rather than per symbol sequence
    * @return Iterable<OrderbookEvent> -- produce OrderBookEvents from the simulator
    */
   static public Iterator<List<OrderBookEvent>> getComplexSimulator(
@@ -47,7 +45,8 @@ public class Simulator {
       long numContracts,
       long midPrice,
       long seed,
-      long degreeDistribution) {
+      long degreeDistribution,
+      boolean useGlobalSequence) {
 
     // Minimum tick
     long minTicks = 10;
@@ -55,11 +54,11 @@ public class Simulator {
     // Maximum delay -- number of ticks to wait until sending the next order
     long maxTicks = 50;
 
-    // Start all of the simulators
+    // Start all simulators
     for (long i = 1; i <= numContracts; i++) {
 
       // Calculate a number between 0 and 1 (but not one)
-      double degreeToOne = 1-Math.pow(((double)i/numContracts), degreeDistribution);
+      double degreeToOne = 1 - Math.pow(((double) i / numContracts), degreeDistribution);
 
       // Convert to the number of ticks
       long orderTicks = minTicks + Math.round((maxTicks - minTicks) * degreeToOne);
@@ -71,8 +70,8 @@ public class Simulator {
   }
 
   private final MatcherContext context;
-  private final Matcher m;
-  private final Random r;
+  private final Matcher matcher;
+  private final Random random;
 
   private double buySellBias = 0.5;
 
@@ -95,14 +94,15 @@ public class Simulator {
   private long anchorMidprice;
   private long midprice;
 
-  private Simulator(MatcherContext context, long contractId, long midprice, long seed, long orderTicks) {
+  private Simulator(MatcherContext context, long contractId, long midprice, long seed,
+      long orderTicks) {
     this.anchorMidprice = midprice;
     this.midprice = midprice;
-    this.m = new Matcher(context, contractId);
+    this.matcher = new Matcher(context, contractId);
     if (seed != 0) {
-      this.r = new Random(seed);
+      this.random = new Random(seed);
     } else {
-      this.r = new Random();
+      this.random = new Random();
     }
 
     // Calculate ticks
@@ -116,9 +116,10 @@ public class Simulator {
   }
 
   private void addExecution(long price, long quantity) {
-    if (quantity == 0)
+    if (quantity == 0) {
       return;
-    
+    }
+
     if (quantity > 0) {
       midprice = price;
       context.add(trailingTimeoutTicks, () -> {
@@ -132,32 +133,34 @@ public class Simulator {
   }
 
   private List<OrderBookEvent> generateOrder() {
-    long qty = (long)(minQty + (maxQty - minQty) * r.nextDouble());
- 
+    long qty = (long) (minQty + (maxQty - minQty) * random.nextDouble());
+
     // Set back to 0.02
-    if (r.nextDouble() < 0.0) {
-      buySellBias = r.nextDouble();
-      if (buySellBias > 0.65)
+    if (random.nextDouble() < 0.0) {
+      buySellBias = random.nextDouble();
+      if (buySellBias > 0.65) {
         buySellBias = 0.65;
-      else if (buySellBias < 0.35)
+      } else if (buySellBias < 0.35) {
         buySellBias = 0.35;
+      }
     }
 
     // Adjust midprice to trailing average traded price
-    if (trailingShares > 0)
+    if (trailingShares > 0) {
       midprice = Math.round(trailingSV / trailingShares);
+    }
 
     // Adjust buy sell bias by how close we are to the outer edges of trading (+/- 50)
-    double priceShift = (r.nextDouble() * range) - (range / 2.0);
+    double priceShift = (random.nextDouble() * range) - (range / 2.0);
     if (midprice < anchorMidprice) {
-      priceShift += Math.pow((anchorMidprice - midprice)/50, 2) * r.nextDouble() * 3;
+      priceShift += Math.pow((anchorMidprice - midprice) / 50, 2) * random.nextDouble() * 3;
     } else {
-      priceShift -= Math.pow((midprice - anchorMidprice)/50, 2) * r.nextDouble() * 3;
+      priceShift -= Math.pow((midprice - anchorMidprice) / 50, 2) * random.nextDouble() * 3;
     }
-    
+
     long price;
     OrderBookEvent.Side side;
-    if (r.nextDouble() < buySellBias) {
+    if (random.nextDouble() < buySellBias) {
       side = OrderBookEvent.Side.BUY;
       price = Math.round(midprice + (priceShift - shift));
     } else {
@@ -167,24 +170,14 @@ public class Simulator {
 
     // Determine the Order
     final Order o = context.newOrder(side, price, qty);
-    
-    context.add(orderTicks, new Callable<List<OrderBookEvent>>() {
-      @Override
-      public List<OrderBookEvent> call() throws Exception {
-        return generateOrder();
-      }
-    });
+
+    context.add(orderTicks, () -> generateOrder());
 
     // Remove the order in the future
-    context.add(orderTicks + cancelTicks, new Callable<List<OrderBookEvent>>() {
-      @Override
-      public List<OrderBookEvent> call() throws Exception {
-        return m.remove(o);
-      }
-    });
+    context.add(orderTicks + cancelTicks, () -> matcher.remove(o));
 
     // Add the order
-    List<OrderBookEvent> b = m.add(o);
+    List<OrderBookEvent> b = matcher.add(o);
 
     // Adjust the fills based on execution events
     for (OrderBookEvent obe : b) {

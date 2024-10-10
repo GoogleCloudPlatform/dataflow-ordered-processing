@@ -1,6 +1,8 @@
 # Ordered Processing Pipeline Design
 
-The mechanics of the ordering processing are handled by a generic `OrderedEventProcessor` transform.
+[//]: # (TODO: add the link to the Beam Javadoc)
+The mechanics of the ordering processing are handled by a generic [OrderedEventProcessor]()
+transform from Apache Beam's "ordered" extension module.
 It uses Apache Beam's state and timers to keep the state of processing, buffers the events that
 arrived out-of-sequence and emits the processing status events.
 
@@ -16,24 +18,25 @@ data. In our use case the key is the combination of session id and contract
 id. [SessionContractKey](/order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/SessionContractKey.java)
 is a class which implements both the key and its coder.
 
-### Transform the incoming PCollection into a structured PCollection
+### Transform the incoming PCollection into a PCollection of the required shape
 
-The input PCollection for the OrderedEventProcessor needs to be in
-the `KV<KeyType, <KV<Long,EventType>>` PCollection.
-The key type in our case is the SessionContractKey, event type -
-OrderBookEvent. [ConvertOrderBookEventToKV DoFn](/order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/ConvertOrderBookEventToKV.java)
+The input data for the OrderedEventProcessor needs to be a `KV<KeyType, <KV<Long,EventType>>`
+PCollection.
+The key type in our case is the SessionContractKey, event type - OrderBookEvent.
+[ConvertOrderBookEventToKV DoFn](/order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/ConvertOrderBookEventToKV.java)
 puts our incoming PCollection into the required shape.
 
 ### Create a class to wrap your business logic of processing events
 
+[//]: # (TODO: add the link to the Beam Javadoc)
 This class needs to
-implement [MutableState interface](/beam-ordered-processing/src/main/java/org/apache/beam/sdk/extensions/ordered/MutableState.java),
-and has to
-implement two methods:
+implement [MutableState interface](),
+and has to implement two methods:
 
-* `mutate` will be called by the OrderedEventProcessor in the ordered sequence
+* `mutate` will be called by the OrderedEventProcessor in the right sequence
 * `produceResult` will follow the call to `mutate` or the initial creation of the state. It can
-  return NULL if there is nothing to output, or produce the result, which will be immediately output
+  return "null" if there is nothing to output, or produce the result, which will be immediately
+  output
   to the resulting PCollection.
 
 It is implemented
@@ -50,8 +53,9 @@ processor also needs to know:
 * Is it the last element in the sequence? This information is useful to do some cleanup if all the
   expected elements for a given key have been processed.
 
+[//]: # (TODO: add the link to the Beam Javadoc)
 This class needs to
-implement [ProcessFunction<Event, State>](/beam-ordered-processing/src/main/java/org/apache/beam/sdk/extensions/ordered/EventExaminer.java).
+implement [EventExaminer interface]().
 In our demo it is implemented
 by [OrderBookEventExaminer class](/order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/OrderBookEventExaminer.java).
 
@@ -69,8 +73,9 @@ ready to be processed. There are three coders used by the transform:
 
 ### Create a handler to tie all the above together
 
+[//]: # (TODO: add the link to the Beam Javadoc)
 The OrderedEventProcessor is configured by providing a handler which must extend
-the [OrderedProcessingHandler](../beam-ordered-processing/src/main/java/org/apache/beam/sdk/extensions/ordered/OrderedProcessingHandler.java)
+the [OrderedProcessingHandler]()
 class. That class (in this
 demo, [OrderBookOrderedProcessingHandler](../order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/OrderBookOrderedProcessingHandler.java))
 provides default implementations for a number of methods. The implementing class
@@ -84,6 +89,13 @@ must provide two methods:
 You can override the default implementations of the methods to supply custom coders (different from
 the default registered with the pipeline), change the processing status notification emission
 frequency, buffering parameters, etc.
+
+[//]: # (TODO: add the link to the Beam Javadoc)
+`OrderedEventProcessor` can process two kinds of sequences - a sequence per key and a global
+sequence. It determines which sequencing type is used based on which class the provided handlers
+extends. If OrderedProcessingHandler is extended then a sequence per key will be used.
+If OrderedProcessingHandler.OrderedProcessingGlobalSequenceHandler is extended - the global sequence
+will be utilized.
 
 ### Create a custom transform to wrap the OrderedEventProcessing transform
 
@@ -102,8 +114,7 @@ is [MarketDepthToTableRowConverter](/order-book-pipeline/src/main/java/com/googl
 ### Code the pipeline
 
 The final pipeline is very simple at this point: read the sources (Google Pub/Sub subscription in
-our case),
-build the order book and save the
+our case), build the order book and save the
 output - [OrderBookProcessingPipeline](/order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/OrderBookProcessingPipeline.java).
 
 This is the pipeline graph:
@@ -120,9 +131,3 @@ processed order number. If the new event needs to be buffered the duplicate numb
 and the processing results are unpredictable.
 
 The number of detected duplicates will be reported in the emitted processing statuses.
-
-### Additional Improvements
-
-* Store only required data elements in buffered objects.
-* Emit warnings on processing which misses some SLA based on the processing status PCollection
-  emitted by the OrderedEventProcessor.

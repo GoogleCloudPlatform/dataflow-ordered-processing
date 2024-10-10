@@ -87,6 +87,12 @@ public class OrderBookProcessingPipeline {
     int getMaxOutputElementsPerBundle();
 
     void setMaxOutputElementsPerBundle(int value);
+
+    @Description("If set true  per-key-sequencing will be used, otherwise global sequencing.")
+    @Default.Boolean(true)
+    boolean isSequencingPerKey();
+
+    void setSequencingPerKey(boolean value);
   }
 
   public static void main(String[] args) {
@@ -108,7 +114,8 @@ public class OrderBookProcessingPipeline {
         .apply("Build Order Book", new OrderBookProducer(
             options.getOrderBookDepth(),
             options.isIncludeLastTrade(),
-            options.getMaxOutputElementsPerBundle()).produceStatusUpdatesOnEveryEvent());
+            options.getMaxOutputElementsPerBundle(),
+            options.isSequencingPerKey()).produceStatusUpdatesOnEveryEvent());
 
     storeInBigQuery(processingResults.output(), options.getMarketDepthTable(), "Market Depth",
         new MarketDepthToTableRowConverter());

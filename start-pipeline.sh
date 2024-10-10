@@ -16,12 +16,18 @@
 # limitations under the License.
 #
 
-# This script accepts two optional positional parameters:
+# This script accepts one required and two optional positional parameters:
+# - "global-sequence|per-key-sequence" - determines sequence processing mode
 # - initial number of workers
 # - any value of the second parameter will disable pipeline autoscaling
 
 set -e
 set -u
+
+function print_usage_and_exit() {
+  echo "Usage: ./start-pipeline.sh per-key-sequence|global-sequence [initial_number_of_workers] [disable-autoscaling]"
+  exit 1
+}
 
 source ./get-terraform-output.sh
 source ./get-pipeline-details.sh
@@ -29,11 +35,25 @@ source ./get-pipeline-details.sh
 initial_number_of_workers=1
 scaling_parameters="--maxNumWorkers=50"
 
-if [[ "$#" -ge 1 ]]; then
-    initial_number_of_workers=$1
+if [[ "$#" -eq 0 ]]; then
+  print_usage_and_exit
+fi
+
+sequencing_per_key=true
+sequencing_per_key_parameter=$1
+if [[ $sequencing_per_key_parameter == 'global-sequence' ]]; then
+  sequencing_per_key=false
+elif [[ $sequencing_per_key_parameter == 'per-key-sequence' ]]; then
+  sequencing_per_key=true
+else
+  print_usage_and_exit
 fi
 
 if [[ "$#" -ge 2 ]]; then
+    initial_number_of_workers=$2
+fi
+
+if [[ "$#" -ge 3 ]]; then
     #  disable autoscaling
     scaling_parameters="--autoscalingAlgorithm=NONE"
 fi
@@ -59,6 +79,7 @@ mvn -q compile exec:java -Dexec.args="--jobName=${JOB_NAME} \
  --processingStatusTable=${PROJECT_ID}.${BQ_DATASET}.${PROCESSING_STATUS_TABLE_NAME} \
  --orderEventTable=${PROJECT_ID}.${BQ_DATASET}.${ORDER_EVENT_TABLE_NAME} \
  --subscription=${ORDER_SUBSCRIPTION} \
+ --sequencingPerKey=${sequencing_per_key} \
  --tempLocation=${DATAFLOW_TEMP_BUCKET}/temp \
  ${worker_parameters}
  "

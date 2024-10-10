@@ -22,9 +22,10 @@ set -u
 source ./get-terraform-output.sh
 
 ./run-simulator.sh \
-  --ordertopic ${ORDER_TOPIC} \
-  --marketdepthtopic ${MARKET_DEPTH_TOPIC} \
-  --region ${REGION} \
-  --limit 1000000 \
-  --contracts 3000
+  --ordertopic "${ORDER_TOPIC}" \
+  --marketdepthtopic "${MARKET_DEPTH_TOPIC}" \
+  --region "${REGION}" \
+  --limit 5000000 \
+  --contracts 6000 \
+  --globalsequence
 
