@@ -26,7 +26,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
  * Handler use for global sequence processing.
  */
 class OrderBookOrderedProcessingGlobalSequenceHandler extends
-    OrderedProcessingHandler<OrderBookEvent, SessionContractKey, OrderBookMutableState, MarketDepth> {
+    OrderedProcessingHandler.OrderedProcessingGlobalSequenceHandler<OrderBookEvent, SessionContractKey, OrderBookMutableState, MarketDepth> {
 
   private final int depth;
   private final boolean withLastTrade;

@@ -29,35 +29,35 @@ puts our incoming PCollection into the required shape.
 ### Create a class to wrap your business logic of processing events
 
 [//]: # (TODO: add the link to the Beam Javadoc)
-This class needs to
-implement [MutableState interface](),
-and has to implement two methods:
+This class needs to implement [MutableState interface](), and must implement these two methods:
 
 * `mutate` will be called by the OrderedEventProcessor in the right sequence
 * `produceResult` will follow the call to `mutate` or the initial creation of the state. It can
   return "null" if there is nothing to output, or produce the result, which will be immediately
-  output
-  to the resulting PCollection.
+  output to the resulting PCollection.
 
 It is implemented
 in [OrderBookMutableState class](/order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/OrderBookMutableState.java).
 
-### Create a class which will is used to analyse events
+### Create a class which will be used to analyse events
 
 Besides knowing the sequence number of the event in the context of a particular key, the ordered
-processor also needs to know:
+processor also needs to know several additional things about the current element. [//]: # (TODO: add
+the link to the Beam Javadoc)
+This information is provided by a class which implements [EventExaminer interface](). In our demo it
+is [OrderBookEventExaminer class](/order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/OrderBookEventExaminer.java).
 
-* Is it the first element in the sequence? It doesn't assume that 0 or 1 is the starting sequence
+It has the following methods:
+
+* `isInitialEvent` - Is it the first element in the sequence? It doesn't assume that 0 or 1 is the
+  starting sequence
   number.
-* How to create the state when the initial event arrived?
-* Is it the last element in the sequence? This information is useful to do some cleanup if all the
+* `createStateOnInitialEvent` - How to create the state when the initial event arrived? Intial state
+  creation and be simple, or
+  can involve complex logic, including making external API calls.
+* `isLastEvent` - Is it the last element in the sequence? This information is used to do some
+  cleanup if all the
   expected elements for a given key have been processed.
-
-[//]: # (TODO: add the link to the Beam Javadoc)
-This class needs to
-implement [EventExaminer interface]().
-In our demo it is implemented
-by [OrderBookEventExaminer class](/order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/OrderBookEventExaminer.java).
 
 ### Create coders
 
@@ -99,7 +99,7 @@ will be utilized.
 
 ### Create a custom transform to wrap the OrderedEventProcessing transform
 
-This is an optional step, and technically you don't need to do it. But if you do - the main pipeline
+This is an optional step, and technically you don't have to do it. But if you do - the main pipeline
 code will look more compact and the graph on the Dataflow UI will look "prettier". In our
 demo [OrderBookProducer transform](/order-book-pipeline/src/main/java/com/google/cloud/dataflow/orderbook/OrderBookProducer.java)
 is used to hide some mechanics of using the OrderedEventProcessor.
@@ -123,11 +123,20 @@ This is the pipeline graph:
 
 ## Fine print
 
-### Duplicate processing
+### Duplicate/unprocessed events
 
-Currently, the processor will discard the events which have the order number lower than the
-currently
-processed order number. If the new event needs to be buffered the duplicate numbers won't be checked
-and the processing results are unpredictable.
+The OrderedProcessor transform will output the events which have the order number lower than the
+currently processed order number or could not be processed due to an exception being thrown in
+a dedicated PCollection - OrderedEventProcessorResult's
+`unprocessedEvents`. The demo pipeline doesn't process this PCollection, but production pipelines
+will most likely will need to process this PCollection.
 
 The number of detected duplicates will be reported in the emitted processing statuses.
+
+[//]: # (TODO: check why not implemented)
+
+### Draining a streaming Dataflow pipeline
+
+In case a streaming pipeline which runs using the Dataflow runner is drained and still has a number
+of unprocessed (buffered) events, these events will be output via the unprocessedEvents PCollection
+with `buffered` reason.
