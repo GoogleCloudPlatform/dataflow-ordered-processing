@@ -28,12 +28,10 @@ public final class OrderBookEvent extends
     // @@protoc_insertion_point(message_implements:OrderBookEvent)
     OrderBookEventOrBuilder {
 private static final long serialVersionUID = 0L;
-
   // Use OrderBookEvent.newBuilder() to construct.
   private OrderBookEvent(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
     super(builder);
   }
-
   private OrderBookEvent() {
     sessionId_ = "";
     type_ = 0;
@@ -48,13 +46,13 @@ private static final long serialVersionUID = 0L;
   }
 
   public static final com.google.protobuf.Descriptors.Descriptor
-  getDescriptor() {
+      getDescriptor() {
     return com.google.cloud.orderbook.model.MarketData.internal_static_OrderBookEvent_descriptor;
   }
 
   @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-  internalGetFieldAccessorTable() {
+      internalGetFieldAccessorTable() {
     return com.google.cloud.orderbook.model.MarketData.internal_static_OrderBookEvent_fieldAccessorTable
         .ensureFieldAccessorsInitialized(
             com.google.cloud.orderbook.model.OrderBookEvent.class, com.google.cloud.orderbook.model.OrderBookEvent.Builder.class);
@@ -142,34 +140,31 @@ private static final long serialVersionUID = 0L;
     }
 
     public static com.google.protobuf.Internal.EnumLiteMap<Type>
-    internalGetValueMap() {
+        internalGetValueMap() {
       return internalValueMap;
     }
-
     private static final com.google.protobuf.Internal.EnumLiteMap<
         Type> internalValueMap =
-        new com.google.protobuf.Internal.EnumLiteMap<Type>() {
-          public Type findValueByNumber(int number) {
-            return Type.forNumber(number);
-          }
-        };
+          new com.google.protobuf.Internal.EnumLiteMap<Type>() {
+            public Type findValueByNumber(int number) {
+              return Type.forNumber(number);
+            }
+          };
 
     public final com.google.protobuf.Descriptors.EnumValueDescriptor
-    getValueDescriptor() {
+        getValueDescriptor() {
       if (this == UNRECOGNIZED) {
         throw new java.lang.IllegalStateException(
             "Can't get the descriptor of an unrecognized enum value.");
       }
       return getDescriptor().getValues().get(ordinal());
     }
-
     public final com.google.protobuf.Descriptors.EnumDescriptor
-    getDescriptorForType() {
+        getDescriptorForType() {
       return getDescriptor();
     }
-
     public static final com.google.protobuf.Descriptors.EnumDescriptor
-    getDescriptor() {
+        getDescriptor() {
       return com.google.cloud.orderbook.model.OrderBookEvent.getDescriptor().getEnumTypes().get(0);
     }
 
@@ -179,7 +174,7 @@ private static final long serialVersionUID = 0L;
         com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
       if (desc.getType() != getDescriptor()) {
         throw new java.lang.IllegalArgumentException(
-            "EnumValueDescriptor is not for this type.");
+          "EnumValueDescriptor is not for this type.");
       }
       if (desc.getIndex() == -1) {
         return UNRECOGNIZED;
@@ -266,34 +261,31 @@ private static final long serialVersionUID = 0L;
     }
 
     public static com.google.protobuf.Internal.EnumLiteMap<Side>
-    internalGetValueMap() {
+        internalGetValueMap() {
       return internalValueMap;
     }
-
     private static final com.google.protobuf.Internal.EnumLiteMap<
         Side> internalValueMap =
-        new com.google.protobuf.Internal.EnumLiteMap<Side>() {
-          public Side findValueByNumber(int number) {
-            return Side.forNumber(number);
-          }
-        };
+          new com.google.protobuf.Internal.EnumLiteMap<Side>() {
+            public Side findValueByNumber(int number) {
+              return Side.forNumber(number);
+            }
+          };
 
     public final com.google.protobuf.Descriptors.EnumValueDescriptor
-    getValueDescriptor() {
+        getValueDescriptor() {
       if (this == UNRECOGNIZED) {
         throw new java.lang.IllegalStateException(
             "Can't get the descriptor of an unrecognized enum value.");
       }
       return getDescriptor().getValues().get(ordinal());
     }
-
     public final com.google.protobuf.Descriptors.EnumDescriptor
-    getDescriptorForType() {
+        getDescriptorForType() {
       return getDescriptor();
     }
-
     public static final com.google.protobuf.Descriptors.EnumDescriptor
-    getDescriptor() {
+        getDescriptor() {
       return com.google.cloud.orderbook.model.OrderBookEvent.getDescriptor().getEnumTypes().get(1);
     }
 
@@ -303,7 +295,7 @@ private static final long serialVersionUID = 0L;
         com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
       if (desc.getType() != getDescriptor()) {
         throw new java.lang.IllegalArgumentException(
-            "EnumValueDescriptor is not for this type.");
+          "EnumValueDescriptor is not for this type.");
       }
       if (desc.getIndex() == -1) {
         return UNRECOGNIZED;
@@ -322,7 +314,6 @@ private static final long serialVersionUID = 0L;
 
   public static final int TIMESTAMPMS_FIELD_NUMBER = 1;
   private long timestampMS_ = 0L;
-
   /**
    * <pre>
    * Millisecond timestamp
@@ -339,7 +330,6 @@ private static final long serialVersionUID = 0L;
   public static final int SESSIONID_FIELD_NUMBER = 17;
   @SuppressWarnings("serial")
   private volatile java.lang.Object sessionId_ = "";
-
   /**
    * <code>string sessionId = 17;</code>
    * @return The sessionId.
@@ -350,24 +340,23 @@ private static final long serialVersionUID = 0L;
     if (ref instanceof java.lang.String) {
       return (java.lang.String) ref;
     } else {
-      com.google.protobuf.ByteString bs =
+      com.google.protobuf.ByteString bs = 
           (com.google.protobuf.ByteString) ref;
       java.lang.String s = bs.toStringUtf8();
       sessionId_ = s;
       return s;
     }
   }
-
   /**
    * <code>string sessionId = 17;</code>
    * @return The bytes for sessionId.
    */
   @java.lang.Override
   public com.google.protobuf.ByteString
-  getSessionIdBytes() {
+      getSessionIdBytes() {
     java.lang.Object ref = sessionId_;
     if (ref instanceof java.lang.String) {
-      com.google.protobuf.ByteString b =
+      com.google.protobuf.ByteString b = 
           com.google.protobuf.ByteString.copyFromUtf8(
               (java.lang.String) ref);
       sessionId_ = b;
@@ -379,7 +368,6 @@ private static final long serialVersionUID = 0L;
 
   public static final int CONTRACTID_FIELD_NUMBER = 2;
   private long contractId_ = 0L;
-
   /**
    * <pre>
    * Contract ID (unique ordering)
@@ -395,7 +383,6 @@ private static final long serialVersionUID = 0L;
 
   public static final int SEQID_FIELD_NUMBER = 4;
   private long seqId_ = 0L;
-
   /**
    * <pre>
    * Global and per-contract sequence ID.
@@ -414,7 +401,6 @@ private static final long serialVersionUID = 0L;
 
   public static final int CONTRACTSEQID_FIELD_NUMBER = 5;
   private long contractSeqId_ = 0L;
-
   /**
    * <code>int64 contractSeqId = 5;</code>
    * @return The contractSeqId.
@@ -426,7 +412,6 @@ private static final long serialVersionUID = 0L;
 
   public static final int LASTMESSAGE_FIELD_NUMBER = 6;
   private boolean lastMessage_ = false;
-
   /**
    * <pre>
    * This is true when it is the last message for the all contracts.
@@ -444,7 +429,6 @@ private static final long serialVersionUID = 0L;
 
   public static final int LASTCONTRACTMESSAGE_FIELD_NUMBER = 7;
   private boolean lastContractMessage_ = false;
-
   /**
    * <pre>
    * This is true when it is the last message for the contract. There will
@@ -461,7 +445,6 @@ private static final long serialVersionUID = 0L;
 
   public static final int TYPE_FIELD_NUMBER = 8;
   private int type_ = 0;
-
   /**
    * <code>.OrderBookEvent.Type type = 8;</code>
    * @return The enum numeric value on the wire for type.
@@ -469,7 +452,6 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override public int getTypeValue() {
     return type_;
   }
-
   /**
    * <code>.OrderBookEvent.Type type = 8;</code>
    * @return The type.
@@ -481,7 +463,6 @@ private static final long serialVersionUID = 0L;
 
   public static final int ORDERID_FIELD_NUMBER = 9;
   private long orderId_ = 0L;
-
   /**
    * <pre>
    * OrderID for the passive order.
@@ -497,7 +478,6 @@ private static final long serialVersionUID = 0L;
 
   public static final int SIDE_FIELD_NUMBER = 10;
   private int side_ = 0;
-
   /**
    * <pre>
    * enum Buy/Sell
@@ -509,7 +489,6 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override public int getSideValue() {
     return side_;
   }
-
   /**
    * <pre>
    * enum Buy/Sell
@@ -525,7 +504,6 @@ private static final long serialVersionUID = 0L;
 
   public static final int PRICE_FIELD_NUMBER = 11;
   private long price_ = 0L;
-
   /**
    * <code>int64 price = 11;</code>
    * @return The price.
@@ -537,7 +515,6 @@ private static final long serialVersionUID = 0L;
 
   public static final int QUANTITY_FIELD_NUMBER = 12;
   private long quantity_ = 0L;
-
   /**
    * <code>int64 quantity = 12;</code>
    * @return The quantity.
@@ -549,7 +526,6 @@ private static final long serialVersionUID = 0L;
 
   public static final int QUANTITYREMAINING_FIELD_NUMBER = 13;
   private long quantityRemaining_ = 0L;
-
   /**
    * <code>int64 quantityRemaining = 13;</code>
    * @return The quantityRemaining.
@@ -561,7 +537,6 @@ private static final long serialVersionUID = 0L;
 
   public static final int QUANTITYFILLED_FIELD_NUMBER = 14;
   private long quantityFilled_ = 0L;
-
   /**
    * <code>int64 quantityFilled = 14;</code>
    * @return The quantityFilled.
@@ -573,7 +548,6 @@ private static final long serialVersionUID = 0L;
 
   public static final int MATCHNUMBER_FIELD_NUMBER = 15;
   private long matchNumber_ = 0L;
-
   /**
    * <pre>
    * If it is an execution, record the matchNumber
@@ -588,7 +562,6 @@ private static final long serialVersionUID = 0L;
   }
 
   private byte memoizedIsInitialized = -1;
-
   @java.lang.Override
   public final boolean isInitialized() {
     byte isInitialized = memoizedIsInitialized;
@@ -601,7 +574,7 @@ private static final long serialVersionUID = 0L;
 
   @java.lang.Override
   public void writeTo(com.google.protobuf.CodedOutputStream output)
-      throws java.io.IOException {
+                      throws java.io.IOException {
     if (timestampMS_ != 0L) {
       output.writeInt64(1, timestampMS_);
     }
@@ -658,59 +631,59 @@ private static final long serialVersionUID = 0L;
     size = 0;
     if (timestampMS_ != 0L) {
       size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(1, timestampMS_);
+        .computeInt64Size(1, timestampMS_);
     }
     if (contractId_ != 0L) {
       size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(2, contractId_);
+        .computeInt64Size(2, contractId_);
     }
     if (seqId_ != 0L) {
       size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(4, seqId_);
+        .computeInt64Size(4, seqId_);
     }
     if (contractSeqId_ != 0L) {
       size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(5, contractSeqId_);
+        .computeInt64Size(5, contractSeqId_);
     }
     if (lastMessage_ != false) {
       size += com.google.protobuf.CodedOutputStream
-          .computeBoolSize(6, lastMessage_);
+        .computeBoolSize(6, lastMessage_);
     }
     if (lastContractMessage_ != false) {
       size += com.google.protobuf.CodedOutputStream
-          .computeBoolSize(7, lastContractMessage_);
+        .computeBoolSize(7, lastContractMessage_);
     }
     if (type_ != com.google.cloud.orderbook.model.OrderBookEvent.Type.UNSPECIFIED_ORDER.getNumber()) {
       size += com.google.protobuf.CodedOutputStream
-          .computeEnumSize(8, type_);
+        .computeEnumSize(8, type_);
     }
     if (orderId_ != 0L) {
       size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(9, orderId_);
+        .computeInt64Size(9, orderId_);
     }
     if (side_ != com.google.cloud.orderbook.model.OrderBookEvent.Side.UNSPECIFIED_SIDE.getNumber()) {
       size += com.google.protobuf.CodedOutputStream
-          .computeEnumSize(10, side_);
+        .computeEnumSize(10, side_);
     }
     if (price_ != 0L) {
       size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(11, price_);
+        .computeInt64Size(11, price_);
     }
     if (quantity_ != 0L) {
       size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(12, quantity_);
+        .computeInt64Size(12, quantity_);
     }
     if (quantityRemaining_ != 0L) {
       size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(13, quantityRemaining_);
+        .computeInt64Size(13, quantityRemaining_);
     }
     if (quantityFilled_ != 0L) {
       size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(14, quantityFilled_);
+        .computeInt64Size(14, quantityFilled_);
     }
     if (matchNumber_ != 0L) {
       size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(15, matchNumber_);
+        .computeInt64Size(15, matchNumber_);
     }
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(sessionId_)) {
       size += com.google.protobuf.GeneratedMessageV3.computeStringSize(17, sessionId_);
@@ -723,7 +696,7 @@ private static final long serialVersionUID = 0L;
   @java.lang.Override
   public boolean equals(final java.lang.Object obj) {
     if (obj == this) {
-      return true;
+     return true;
     }
     if (!(obj instanceof com.google.cloud.orderbook.model.OrderBookEvent)) {
       return super.equals(obj);
@@ -821,45 +794,38 @@ private static final long serialVersionUID = 0L;
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-
   public static com.google.cloud.orderbook.model.OrderBookEvent parseFrom(
       java.nio.ByteBuffer data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-
   public static com.google.cloud.orderbook.model.OrderBookEvent parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-
   public static com.google.cloud.orderbook.model.OrderBookEvent parseFrom(
       com.google.protobuf.ByteString data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-
   public static com.google.cloud.orderbook.model.OrderBookEvent parseFrom(byte[] data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-
   public static com.google.cloud.orderbook.model.OrderBookEvent parseFrom(
       byte[] data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-
   public static com.google.cloud.orderbook.model.OrderBookEvent parseFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-
   public static com.google.cloud.orderbook.model.OrderBookEvent parseFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -881,14 +847,12 @@ private static final long serialVersionUID = 0L;
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
   }
-
   public static com.google.cloud.orderbook.model.OrderBookEvent parseFrom(
       com.google.protobuf.CodedInputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-
   public static com.google.cloud.orderbook.model.OrderBookEvent parseFrom(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -899,15 +863,12 @@ private static final long serialVersionUID = 0L;
 
   @java.lang.Override
   public Builder newBuilderForType() { return newBuilder(); }
-
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
   }
-
   public static Builder newBuilder(com.google.cloud.orderbook.model.OrderBookEvent prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
-
   @java.lang.Override
   public Builder toBuilder() {
     return this == DEFAULT_INSTANCE
@@ -920,7 +881,6 @@ private static final long serialVersionUID = 0L;
     Builder builder = new Builder(parent);
     return builder;
   }
-
   /**
    * Protobuf type {@code OrderBookEvent}
    */
@@ -928,15 +888,14 @@ private static final long serialVersionUID = 0L;
       com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
       // @@protoc_insertion_point(builder_implements:OrderBookEvent)
       com.google.cloud.orderbook.model.OrderBookEventOrBuilder {
-
     public static final com.google.protobuf.Descriptors.Descriptor
-    getDescriptor() {
+        getDescriptor() {
       return com.google.cloud.orderbook.model.MarketData.internal_static_OrderBookEvent_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-    internalGetFieldAccessorTable() {
+        internalGetFieldAccessorTable() {
       return com.google.cloud.orderbook.model.MarketData.internal_static_OrderBookEvent_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
               com.google.cloud.orderbook.model.OrderBookEvent.class, com.google.cloud.orderbook.model.OrderBookEvent.Builder.class);
@@ -952,7 +911,6 @@ private static final long serialVersionUID = 0L;
       super(parent);
 
     }
-
     @java.lang.Override
     public Builder clear() {
       super.clear();
@@ -977,7 +935,7 @@ private static final long serialVersionUID = 0L;
 
     @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
-    getDescriptorForType() {
+        getDescriptorForType() {
       return com.google.cloud.orderbook.model.MarketData.internal_static_OrderBookEvent_descriptor;
     }
 
@@ -1056,40 +1014,34 @@ private static final long serialVersionUID = 0L;
     public Builder clone() {
       return super.clone();
     }
-
     @java.lang.Override
     public Builder setField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
         java.lang.Object value) {
       return super.setField(field, value);
     }
-
     @java.lang.Override
     public Builder clearField(
         com.google.protobuf.Descriptors.FieldDescriptor field) {
       return super.clearField(field);
     }
-
     @java.lang.Override
     public Builder clearOneof(
         com.google.protobuf.Descriptors.OneofDescriptor oneof) {
       return super.clearOneof(oneof);
     }
-
     @java.lang.Override
     public Builder setRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
         int index, java.lang.Object value) {
       return super.setRepeatedField(field, index, value);
     }
-
     @java.lang.Override
     public Builder addRepeatedField(
         com.google.protobuf.Descriptors.FieldDescriptor field,
         java.lang.Object value) {
       return super.addRepeatedField(field, value);
     }
-
     @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
       if (other instanceof com.google.cloud.orderbook.model.OrderBookEvent) {
@@ -1265,11 +1217,9 @@ private static final long serialVersionUID = 0L;
       } // finally
       return this;
     }
-
     private int bitField0_;
 
     private long timestampMS_ ;
-
     /**
      * <pre>
      * Millisecond timestamp
@@ -1282,7 +1232,6 @@ private static final long serialVersionUID = 0L;
     public long getTimestampMS() {
       return timestampMS_;
     }
-
     /**
      * <pre>
      * Millisecond timestamp
@@ -1299,7 +1248,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <pre>
      * Millisecond timestamp
@@ -1316,7 +1264,6 @@ private static final long serialVersionUID = 0L;
     }
 
     private java.lang.Object sessionId_ = "";
-
     /**
      * <code>string sessionId = 17;</code>
      * @return The sessionId.
@@ -1333,16 +1280,15 @@ private static final long serialVersionUID = 0L;
         return (java.lang.String) ref;
       }
     }
-
     /**
      * <code>string sessionId = 17;</code>
      * @return The bytes for sessionId.
      */
     public com.google.protobuf.ByteString
-    getSessionIdBytes() {
+        getSessionIdBytes() {
       java.lang.Object ref = sessionId_;
       if (ref instanceof String) {
-        com.google.protobuf.ByteString b =
+        com.google.protobuf.ByteString b = 
             com.google.protobuf.ByteString.copyFromUtf8(
                 (java.lang.String) ref);
         sessionId_ = b;
@@ -1351,7 +1297,6 @@ private static final long serialVersionUID = 0L;
         return (com.google.protobuf.ByteString) ref;
       }
     }
-
     /**
      * <code>string sessionId = 17;</code>
      * @param value The sessionId to set.
@@ -1365,7 +1310,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <code>string sessionId = 17;</code>
      * @return This builder for chaining.
@@ -1376,7 +1320,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <code>string sessionId = 17;</code>
      * @param value The bytes for sessionId to set.
@@ -1393,7 +1336,6 @@ private static final long serialVersionUID = 0L;
     }
 
     private long contractId_ ;
-
     /**
      * <pre>
      * Contract ID (unique ordering)
@@ -1406,7 +1348,6 @@ private static final long serialVersionUID = 0L;
     public long getContractId() {
       return contractId_;
     }
-
     /**
      * <pre>
      * Contract ID (unique ordering)
@@ -1423,7 +1364,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <pre>
      * Contract ID (unique ordering)
@@ -1440,7 +1380,6 @@ private static final long serialVersionUID = 0L;
     }
 
     private long seqId_ ;
-
     /**
      * <pre>
      * Global and per-contract sequence ID.
@@ -1456,7 +1395,6 @@ private static final long serialVersionUID = 0L;
     public long getSeqId() {
       return seqId_;
     }
-
     /**
      * <pre>
      * Global and per-contract sequence ID.
@@ -1476,7 +1414,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <pre>
      * Global and per-contract sequence ID.
@@ -1496,7 +1433,6 @@ private static final long serialVersionUID = 0L;
     }
 
     private long contractSeqId_ ;
-
     /**
      * <code>int64 contractSeqId = 5;</code>
      * @return The contractSeqId.
@@ -1505,7 +1441,6 @@ private static final long serialVersionUID = 0L;
     public long getContractSeqId() {
       return contractSeqId_;
     }
-
     /**
      * <code>int64 contractSeqId = 5;</code>
      * @param value The contractSeqId to set.
@@ -1518,7 +1453,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <code>int64 contractSeqId = 5;</code>
      * @return This builder for chaining.
@@ -1531,7 +1465,6 @@ private static final long serialVersionUID = 0L;
     }
 
     private boolean lastMessage_ ;
-
     /**
      * <pre>
      * This is true when it is the last message for the all contracts.
@@ -1546,7 +1479,6 @@ private static final long serialVersionUID = 0L;
     public boolean getLastMessage() {
       return lastMessage_;
     }
-
     /**
      * <pre>
      * This is true when it is the last message for the all contracts.
@@ -1565,7 +1497,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <pre>
      * This is true when it is the last message for the all contracts.
@@ -1584,7 +1515,6 @@ private static final long serialVersionUID = 0L;
     }
 
     private boolean lastContractMessage_ ;
-
     /**
      * <pre>
      * This is true when it is the last message for the contract. There will
@@ -1598,7 +1528,6 @@ private static final long serialVersionUID = 0L;
     public boolean getLastContractMessage() {
       return lastContractMessage_;
     }
-
     /**
      * <pre>
      * This is true when it is the last message for the contract. There will
@@ -1616,7 +1545,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <pre>
      * This is true when it is the last message for the contract. There will
@@ -1634,7 +1562,6 @@ private static final long serialVersionUID = 0L;
     }
 
     private int type_ = 0;
-
     /**
      * <code>.OrderBookEvent.Type type = 8;</code>
      * @return The enum numeric value on the wire for type.
@@ -1642,7 +1569,6 @@ private static final long serialVersionUID = 0L;
     @java.lang.Override public int getTypeValue() {
       return type_;
     }
-
     /**
      * <code>.OrderBookEvent.Type type = 8;</code>
      * @param value The enum numeric value on the wire for type to set.
@@ -1654,7 +1580,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <code>.OrderBookEvent.Type type = 8;</code>
      * @return The type.
@@ -1664,7 +1589,6 @@ private static final long serialVersionUID = 0L;
       com.google.cloud.orderbook.model.OrderBookEvent.Type result = com.google.cloud.orderbook.model.OrderBookEvent.Type.forNumber(type_);
       return result == null ? com.google.cloud.orderbook.model.OrderBookEvent.Type.UNRECOGNIZED : result;
     }
-
     /**
      * <code>.OrderBookEvent.Type type = 8;</code>
      * @param value The type to set.
@@ -1679,7 +1603,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <code>.OrderBookEvent.Type type = 8;</code>
      * @return This builder for chaining.
@@ -1692,7 +1615,6 @@ private static final long serialVersionUID = 0L;
     }
 
     private long orderId_ ;
-
     /**
      * <pre>
      * OrderID for the passive order.
@@ -1705,7 +1627,6 @@ private static final long serialVersionUID = 0L;
     public long getOrderId() {
       return orderId_;
     }
-
     /**
      * <pre>
      * OrderID for the passive order.
@@ -1722,7 +1643,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <pre>
      * OrderID for the passive order.
@@ -1739,7 +1659,6 @@ private static final long serialVersionUID = 0L;
     }
 
     private int side_ = 0;
-
     /**
      * <pre>
      * enum Buy/Sell
@@ -1751,7 +1670,6 @@ private static final long serialVersionUID = 0L;
     @java.lang.Override public int getSideValue() {
       return side_;
     }
-
     /**
      * <pre>
      * enum Buy/Sell
@@ -1767,7 +1685,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <pre>
      * enum Buy/Sell
@@ -1781,7 +1698,6 @@ private static final long serialVersionUID = 0L;
       com.google.cloud.orderbook.model.OrderBookEvent.Side result = com.google.cloud.orderbook.model.OrderBookEvent.Side.forNumber(side_);
       return result == null ? com.google.cloud.orderbook.model.OrderBookEvent.Side.UNRECOGNIZED : result;
     }
-
     /**
      * <pre>
      * enum Buy/Sell
@@ -1800,7 +1716,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <pre>
      * enum Buy/Sell
@@ -1817,7 +1732,6 @@ private static final long serialVersionUID = 0L;
     }
 
     private long price_ ;
-
     /**
      * <code>int64 price = 11;</code>
      * @return The price.
@@ -1826,7 +1740,6 @@ private static final long serialVersionUID = 0L;
     public long getPrice() {
       return price_;
     }
-
     /**
      * <code>int64 price = 11;</code>
      * @param value The price to set.
@@ -1839,7 +1752,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <code>int64 price = 11;</code>
      * @return This builder for chaining.
@@ -1852,7 +1764,6 @@ private static final long serialVersionUID = 0L;
     }
 
     private long quantity_ ;
-
     /**
      * <code>int64 quantity = 12;</code>
      * @return The quantity.
@@ -1861,7 +1772,6 @@ private static final long serialVersionUID = 0L;
     public long getQuantity() {
       return quantity_;
     }
-
     /**
      * <code>int64 quantity = 12;</code>
      * @param value The quantity to set.
@@ -1874,7 +1784,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <code>int64 quantity = 12;</code>
      * @return This builder for chaining.
@@ -1887,7 +1796,6 @@ private static final long serialVersionUID = 0L;
     }
 
     private long quantityRemaining_ ;
-
     /**
      * <code>int64 quantityRemaining = 13;</code>
      * @return The quantityRemaining.
@@ -1896,7 +1804,6 @@ private static final long serialVersionUID = 0L;
     public long getQuantityRemaining() {
       return quantityRemaining_;
     }
-
     /**
      * <code>int64 quantityRemaining = 13;</code>
      * @param value The quantityRemaining to set.
@@ -1909,7 +1816,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <code>int64 quantityRemaining = 13;</code>
      * @return This builder for chaining.
@@ -1922,7 +1828,6 @@ private static final long serialVersionUID = 0L;
     }
 
     private long quantityFilled_ ;
-
     /**
      * <code>int64 quantityFilled = 14;</code>
      * @return The quantityFilled.
@@ -1931,7 +1836,6 @@ private static final long serialVersionUID = 0L;
     public long getQuantityFilled() {
       return quantityFilled_;
     }
-
     /**
      * <code>int64 quantityFilled = 14;</code>
      * @param value The quantityFilled to set.
@@ -1944,7 +1848,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <code>int64 quantityFilled = 14;</code>
      * @return This builder for chaining.
@@ -1957,7 +1860,6 @@ private static final long serialVersionUID = 0L;
     }
 
     private long matchNumber_ ;
-
     /**
      * <pre>
      * If it is an execution, record the matchNumber
@@ -1970,7 +1872,6 @@ private static final long serialVersionUID = 0L;
     public long getMatchNumber() {
       return matchNumber_;
     }
-
     /**
      * <pre>
      * If it is an execution, record the matchNumber
@@ -1987,7 +1888,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     /**
      * <pre>
      * If it is an execution, record the matchNumber
@@ -2002,7 +1902,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
     @java.lang.Override
     public final Builder setUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
@@ -2015,12 +1914,12 @@ private static final long serialVersionUID = 0L;
       return super.mergeUnknownFields(unknownFields);
     }
 
+
     // @@protoc_insertion_point(builder_scope:OrderBookEvent)
   }
 
   // @@protoc_insertion_point(class_scope:OrderBookEvent)
   private static final com.google.cloud.orderbook.model.OrderBookEvent DEFAULT_INSTANCE;
-
   static {
     DEFAULT_INSTANCE = new com.google.cloud.orderbook.model.OrderBookEvent();
   }

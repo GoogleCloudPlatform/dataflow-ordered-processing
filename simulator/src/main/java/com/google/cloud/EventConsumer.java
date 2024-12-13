@@ -16,10 +16,11 @@
 
 package com.google.cloud;
 
+import java.io.IOException;
 import com.google.cloud.orderbook.model.MarketDepth;
 import com.google.cloud.orderbook.model.OrderBookEvent;
 
 public interface EventConsumer extends AutoCloseable {
-  void accept(OrderBookEvent orderBookEvent);
-  void accept(MarketDepth marketDepth);
+  void accept(OrderBookEvent orderBookEvent) throws IOException;
+  void accept(MarketDepth marketDepth) throws IOException;
 }
