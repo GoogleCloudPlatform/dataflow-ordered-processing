@@ -194,6 +194,7 @@ public class App {
    */
   MatcherContext buildMatcherContext() throws ParameterException {
     String sessionId = DateTimeFormatter.ofPattern("yyyy-MM-dd.HH:mm").format(LocalDateTime.now());
+    System.out.println("Session id for this simulation: " + sessionId);
 
     MatcherContext.Builder builder;
     if (rate > 0) {
