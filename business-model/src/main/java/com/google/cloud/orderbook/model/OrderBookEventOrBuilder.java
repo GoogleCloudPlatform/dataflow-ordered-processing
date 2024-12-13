@@ -39,13 +39,12 @@ public interface OrderBookEventOrBuilder extends
    * @return The sessionId.
    */
   java.lang.String getSessionId();
-
   /**
    * <code>string sessionId = 17;</code>
    * @return The bytes for sessionId.
    */
   com.google.protobuf.ByteString
-  getSessionIdBytes();
+      getSessionIdBytes();
 
   /**
    * <pre>
@@ -104,7 +103,6 @@ public interface OrderBookEventOrBuilder extends
    * @return The enum numeric value on the wire for type.
    */
   int getTypeValue();
-
   /**
    * <code>.OrderBookEvent.Type type = 8;</code>
    * @return The type.
@@ -130,7 +128,6 @@ public interface OrderBookEventOrBuilder extends
    * @return The enum numeric value on the wire for side.
    */
   int getSideValue();
-
   /**
    * <pre>
    * enum Buy/Sell

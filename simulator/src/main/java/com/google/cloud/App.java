@@ -48,14 +48,24 @@ public class App {
   private long degree = 2;
   @Parameter(names = {"--contracts"}, description = "Number of contracts to create")
   private long contracts = 100;
+  @Parameter(names = {"--zero_contract"}, description = "Contract number to start from (excluding)")
+  private long zero_contract = 0;
   @Parameter(names = {"--rate"}, description = "Rate for event generation (per second, minimum 10)")
   private long rate = 10;
+  @Parameter(names = {"--depth"}, description = "Depth of marketdepth captured")
+  private int depth = 2;
   @Parameter(names = {
       "--simtime"}, description = "Use simulated time rather than real time (requires rate for events per second)")
   private long simtime = 0;
   @Parameter(names = {
       "--duration"}, description = "Duration of the exchange before finishing (format in ISO-8601, e.g., PT2M for 2 minutes")
   private String duration = null;
+  @Parameter(names = {
+      "--json"}, description = "Output json when not publishing to Pub/Sub")
+  private boolean json = false;
+  @Parameter(names = {
+      "--avro"}, description = "Avro prefix for output")  
+  private String avroPrefix = null;
 
   // Related to PubSub
   @Parameter(names = {"--region"}, description = "Pub/Sub region to publish to")
@@ -125,7 +135,7 @@ public class App {
           obb.processEvent(orderBookEvent);
 
           // Produce the latest MarketDepth
-          MarketDepth marketDepth = obb.getCurrentMarketDepth(2, true);
+          MarketDepth marketDepth = obb.getCurrentMarketDepth(depth, true);
 
           // If there's anything new in the MarketDepth, then publish the market depth
           if (marketDepth != null) {
@@ -145,7 +155,13 @@ public class App {
    */
   EventConsumer buildConsumer() throws ParameterException, IOException {
     if (orderTopic == null && marketDepthTopic == null && region == null) {
-      return new StandardOutputConsumer();
+      if (json) {
+        return new JSONOutputConsumer();
+      } else if (avroPrefix != null) {
+        return new AvroOutputConsumer(avroPrefix);
+      } else {
+        return new StandardOutputConsumer();
+      }
     }
 
     if (orderTopic != null && marketDepthTopic != null) {
@@ -164,6 +180,7 @@ public class App {
     return Simulator.getComplexSimulator(
         buildMatcherContext(),
         contracts,
+        zero_contract,
         100,
         seed,
         degree);
@@ -178,13 +195,13 @@ public class App {
   MatcherContext buildMatcherContext() throws ParameterException {
     String sessionId = DateTimeFormatter.ofPattern("yyyy-MM-dd.HH:mm").format(LocalDateTime.now());
     System.out.println("Session id for this simulation: " + sessionId);
+
     MatcherContext.Builder builder;
     if (rate > 0) {
       if (simtime > 0) {
-        System.out.println("Building simulated");
         builder = MatcherContext.buildSimulated(sessionId, rate);
+        builder.withStartTimeMillis(simtime);
       } else {
-        System.out.println("Building throttled");
         builder = MatcherContext.buildThrottled(sessionId, rate);
       }
     } else {

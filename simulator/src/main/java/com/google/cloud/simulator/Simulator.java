@@ -37,6 +37,7 @@ public class Simulator {
    *
    * @param context      MatcherContext for the context of the matching engine
    * @param numContracts Number of contracts to generate
+   * @param zeroContract Contract number to start from (excluding the zeroContract)
    * @param midPrice     Starting mid price for all contracts
    * @param seed         Random seed (0 = default randomization)
    * @param degreeDist   Degree of uneven distribution (0 = unform, 1 = linear, 2 = power of 2, etc)
@@ -45,6 +46,7 @@ public class Simulator {
   static public Iterator<List<OrderBookEvent>> getComplexSimulator(
       MatcherContext context,
       long numContracts,
+      long zeroContract,
       long midPrice,
       long seed,
       long degreeDistribution) {
@@ -64,7 +66,7 @@ public class Simulator {
       // Convert to the number of ticks
       long orderTicks = minTicks + Math.round((maxTicks - minTicks) * degreeToOne);
 
-      new Simulator(context, i, midPrice, seed, orderTicks);
+      new Simulator(context, zeroContract + i, midPrice, seed, orderTicks);
     }
 
     return context.iterator();
