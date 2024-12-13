@@ -78,23 +78,23 @@ public class App {
   public static void main(String argv[]) {
 
     // Initialize the parsing objects
-    App app = new App();
+    App args = new App();
     JCommander parser = JCommander
         .newBuilder()
-        .addObject(app)
+        .addObject(args)
         .build();
 
     try {
 
       // Parse the user-specifiedc arguments
       parser.parse(argv);
-      if (app.help) {
+      if (args.help) {
         parser.usage();
         System.exit(1);
       }
 
       // Run the simulator
-      app.runSimulator();
+      args.runSimulator();
     }
 
     // Failure parsing an argument (show usage)
