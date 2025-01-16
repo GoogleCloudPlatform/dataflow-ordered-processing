@@ -25,7 +25,7 @@ source ./get-terraform-output.sh
   --ordertopic "${ORDER_TOPIC}" \
   --marketdepthtopic "${MARKET_DEPTH_TOPIC}" \
   --region "${REGION}" \
-  --limit 5000000 \
-  --contracts 6000 \
+  --limit 100 \
+  --contracts 10 \
   --globalsequence
 

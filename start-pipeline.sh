@@ -60,7 +60,8 @@ fi
 
 worker_parameters="${scaling_parameters} --numWorkers=${initial_number_of_workers}"
 
-EXPERIMENTS="enable_recommendations,enable_lightweight_streaming_update"
+EXPERIMENTS="enable_recommendations,enable_lightweight_streaming_update,use_runner_v2"
+#EXPERIMENTS="enable_recommendations,enable_lightweight_streaming_update"
 
 cd order-book-pipeline
 
@@ -80,6 +81,10 @@ mvn -q compile exec:java -Dexec.args="--jobName=${JOB_NAME} \
  --orderEventTable=${PROJECT_ID}.${BQ_DATASET}.${ORDER_EVENT_TABLE_NAME} \
  --subscription=${ORDER_SUBSCRIPTION} \
  --sequencingPerKey=${sequencing_per_key} \
+ --streaming=true \
+ --sdkHarnessLogLevelOverrides='{"'"'"org.apache.beam.sdk.extensions.ordered"'"'":"'"'"TRACE"'"'"}' \
+ --experiments=enable_data_sampling \
+ --streamingSideInputCacheExpirationMillis=2000 \
  --tempLocation=${DATAFLOW_TEMP_BUCKET}/temp \
  ${worker_parameters}
  "

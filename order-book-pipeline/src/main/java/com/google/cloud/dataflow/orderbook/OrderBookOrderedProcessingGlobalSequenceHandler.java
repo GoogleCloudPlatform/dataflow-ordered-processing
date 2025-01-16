@@ -20,7 +20,11 @@ import com.google.cloud.orderbook.model.MarketDepth;
 import com.google.cloud.orderbook.model.OrderBookEvent;
 import org.apache.beam.sdk.extensions.ordered.EventExaminer;
 import org.apache.beam.sdk.extensions.ordered.OrderedProcessingHandler;
+import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
+import org.joda.time.Duration;
 
 /**
  * Handler use for global sequence processing.
@@ -41,5 +45,16 @@ class OrderBookOrderedProcessingGlobalSequenceHandler extends
   @Override
   public @NonNull EventExaminer<OrderBookEvent, OrderBookMutableState> getEventExaminer() {
     return new OrderBookEventExaminer(depth, withLastTrade);
+  }
+
+  @Override
+  public @Nullable @UnknownKeyFor @Initialized Duration getStatusUpdateFrequency() {
+//    return Duration.standardSeconds(5);
+    return null;
+  }
+
+  @Override
+  public @UnknownKeyFor @NonNull @Initialized boolean isProduceStatusUpdateOnEveryEvent() {
+    return false;
   }
 }

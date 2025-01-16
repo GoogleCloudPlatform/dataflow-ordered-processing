@@ -17,6 +17,7 @@
 package com.google.cloud.dataflow.orderbook;
 
 import com.google.api.services.bigquery.model.TableRow;
+import org.apache.beam.sdk.extensions.ordered.ContiguousSequenceRange;
 import org.apache.beam.sdk.extensions.ordered.OrderedProcessingStatus;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
@@ -39,6 +40,16 @@ public class ProcessingStatusToTableRowConverter implements
     result.set("duplicate_count", status.getDuplicateCount());
     result.set("result_count", status.getResultCount());
     result.set("last_event_received", status.isLastEventReceived());
+    ContiguousSequenceRange lastRange = status.getLastContiguousSequenceRange();
+    if (lastRange == null) {
+      result.set("last_range", null);
+    } else {
+      TableRow range = new TableRow();
+      range.set("start", lastRange.getStart());
+      range.set("end", lastRange.getEnd());
+      range.set("ts", lastRange.getTimestamp());
+      result.set("last_range", range);
+    }
     return result;
   }
 }

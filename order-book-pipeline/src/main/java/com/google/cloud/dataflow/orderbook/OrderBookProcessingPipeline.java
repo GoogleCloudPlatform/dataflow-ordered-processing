@@ -110,12 +110,18 @@ public class OrderBookProcessingPipeline {
         PubsubIO.readProtos(
             OrderBookEvent.class).fromSubscription(options.getSubscription()));
 
+    OrderBookProducer orderBookProducer = new OrderBookProducer(
+        options.getOrderBookDepth(),
+        options.isIncludeLastTrade(),
+        options.getMaxOutputElementsPerBundle(),
+        options.isSequencingPerKey());
+
+    if (options.isSequencingPerKey()) {
+      // Doesn't make sense to produce statuses per event in the global sequence case.
+      orderBookProducer = orderBookProducer.produceStatusUpdatesOnEveryEvent();
+    }
     OrderedEventProcessorResult<SessionContractKey, MarketDepth, OrderBookEvent> processingResults = orderBookEvents
-        .apply("Build Order Book", new OrderBookProducer(
-            options.getOrderBookDepth(),
-            options.isIncludeLastTrade(),
-            options.getMaxOutputElementsPerBundle(),
-            options.isSequencingPerKey()).produceStatusUpdatesOnEveryEvent());
+        .apply("Build Order Book", orderBookProducer);
 
     storeInBigQuery(processingResults.output(), options.getMarketDepthTable(), "Market Depth",
         new MarketDepthToTableRowConverter());
@@ -131,6 +137,9 @@ public class OrderBookProcessingPipeline {
           "Order Event",
           new OrderBookEventToTableRowConverter());
     }
+
+    pipeline.apply("Analyze Ranges",
+        new AnalyzeContiguousRangeGeneration(processingResults.latestContiguousRange()));
 
     pipeline.run();
   }

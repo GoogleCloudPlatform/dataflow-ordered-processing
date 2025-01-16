@@ -55,6 +55,28 @@
     "type": "BOOLEAN"
   },
   {
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "name": "last_range",
+    "fields": [
+      {
+        "mode": "REQUIRED",
+        "name": "start",
+        "type": "INT64"
+      },
+      {
+        "mode": "REQUIRED",
+        "name": "end",
+        "type": "INT64"
+      },
+      {
+        "mode": "REQUIRED",
+        "name": "ts",
+        "type": "TIMESTAMP"
+      }
+    ]
+  },
+  {
     "mode": "REQUIRED",
     "name": "ingest_ts",
     "type": "TIMESTAMP",
